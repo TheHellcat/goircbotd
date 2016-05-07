@@ -5,32 +5,33 @@ import (
     "net"
     "bufio"
     "strings"
-    "time"
 )
 
 type HcIrc struct {
-    host              string
-    port              string
-    user              string
-    name              string
-    nick              string
-    pass              string
+    host                 string
+    port                 string
+    user                 string
+    name                 string
+    nick                 string
+    pass                 string
 
-    Debugmode         bool
-    AutohandleSysMsgs bool
+    Debugmode            bool
+    AutohandleSysMsgs    bool
 
-    connection        net.Conn
-    writer            *bufio.Writer
-    reader            *bufio.Reader
-    InboundQueue      chan string
-    OutboundQueue     chan string
-    inQueueRunning    bool
-    outQueueRunning   bool
+    connection           net.Conn
+    writer               *bufio.Writer
+    reader               *bufio.Reader
+    InboundQueue         chan string
+    OutboundQueue        chan string
+    OutQuickQueue        chan string
+    inQueueRunning       bool
+    outQueueRunning      bool
+    outQuickQueueRunning bool
 
-    QueueSize         int
-    FloodThrottle     int
+    QueueSize            int
+    FloodThrottle        int
 
-    Error             string
+    Error                string
 }
 
 func init() {
@@ -178,94 +179,16 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
  *
  */
 func (hcIrc *HcIrc) SendToServer(message string) {
-//    var i int
-//    var err error
+    //    var i int
+    //    var err error
 
     hcIrc.debugPrint("  to server <<<", message)
-//    i, err =
+    //    i, err =
     message = strings.Replace(message, string('\n'), "", -1)
     message = strings.Replace(message, string('\r'), "", -1)
     message = fmt.Sprintf("%s\n", message)
     hcIrc.writer.WriteString(message)
     hcIrc.writer.Flush()
-}
-
-
-/**
- *
- */
-func (hcIrc *HcIrc) inboundQueueRoutine() {
-    var s string
-
-    for hcIrc.inQueueRunning {
-        s = hcIrc.WaitForServerMessage()
-        hcIrc.InboundQueue <- s
-//        time.Sleep(time.Duration(hcIrc.FloodThrottle) * time.Second)
-    }
-
-    close(hcIrc.InboundQueue)
-}
-
-
-/**
- *
- */
-func (hcIrc *HcIrc) StartInboundQueue() {
-    var inChan chan string
-
-    hcIrc.debugPrint("Starting inbound queue", "")
-
-    inChan = make(chan string, hcIrc.QueueSize)
-    hcIrc.InboundQueue = inChan
-
-    hcIrc.inQueueRunning = true
-    go hcIrc.inboundQueueRoutine()
-}
-
-
-/**
- *
- */
-func (hcIrc *HcIrc) StopInboundQueue() {
-    hcIrc.debugPrint("Stopping inbound queue", "")
-    hcIrc.inQueueRunning = false
-}
-
-
-/**
- *
- */
-func (hcIrc *HcIrc) outboundQueueRoutine() {
-    for s := range hcIrc.OutboundQueue {
-        hcIrc.SendToServer(s)
-        time.Sleep(time.Duration(hcIrc.FloodThrottle) * time.Second)
-    }
-}
-
-
-/**
- *
- */
-func (hcIrc *HcIrc) StartOutboundQueue() {
-    var outChan chan string
-
-    hcIrc.debugPrint("Starting outbound queue", "")
-
-    outChan = make(chan string, hcIrc.QueueSize)
-    hcIrc.OutboundQueue = outChan
-
-    hcIrc.outQueueRunning = true
-    go hcIrc.outboundQueueRoutine()
-}
-
-
-/**
- *
- */
-func (hcIrc *HcIrc) StopOutboundQueue() {
-    hcIrc.debugPrint("Stopping outbound queue", "")
-    hcIrc.outQueueRunning = false
-    close(hcIrc.OutboundQueue)
 }
 
 
@@ -300,11 +223,11 @@ func (hcIrc *HcIrc) Connect() {
     hcIrc.connection = connection
     if err != nil {
         hcIrc.Error = err.Error()
-        hcIrc.debugPrint( "ERROR establishing connection:", err.Error() )
+        hcIrc.debugPrint("ERROR establishing connection:", err.Error())
         return
     }
 
-    hcIrc.debugPrint( "Connection: Connected to server", "" )
+    hcIrc.debugPrint("Connection: Connected to server", "")
 
     // init I/O handlers
     writer = bufio.NewWriter(connection)
@@ -336,7 +259,7 @@ func (hcIrc *HcIrc) Connect() {
         }
     }
 
-    hcIrc.debugPrint( "Connection: Registered with server", "" )
+    hcIrc.debugPrint("Connection: Registered with server", "")
 
 }
 
@@ -347,6 +270,10 @@ func (hcIrc *HcIrc) Connect() {
 func (hcIrc *HcIrc) Shutdown() {
     if hcIrc.outQueueRunning {
         hcIrc.StopOutboundQueue()
+    }
+
+    if hcIrc.outQuickQueueRunning {
+        hcIrc.StopOutQuickQueue()
     }
 
     if hcIrc.inQueueRunning {
