@@ -29,6 +29,8 @@ type HcIrc struct {
 
     QueueSize         int
     FloodThrottle     int
+
+    Error             string
 }
 
 func init() {
@@ -49,6 +51,9 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         reader: nil,
         QueueSize: 64,
         FloodThrottle: 2,
+        Error: "",
+        inQueueRunning: false,
+        outQueueRunning: false,
     }
 }
 
@@ -73,7 +78,9 @@ func (hcIrc *HcIrc) WaitForServerMessage() string {
 
     s, err = hcIrc.reader.ReadString('\n')
     if err != nil {
-        // TODO: handle error
+        hcIrc.debugPrint("ERROR reading from server ---", err.Error())
+        hcIrc.Error = err.Error()
+        return ""
     }
 
     s = strings.Replace(s, string('\n'), "", -1)
@@ -102,6 +109,10 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
     user = ""
     host = ""
 
+    if len(message) < 2 {
+        return command, channel, nick, user, host, text
+    }
+
     if message[0:1] == ":" {
         s1 = strings.SplitN(message, " ", 2)
         message = s1[1]
@@ -121,7 +132,9 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
     }
 
     command = s1[0]
-    channel = s1[1]
+    if len(s1) > 1 {
+        channel = s1[1]
+    }
 
     s2 = strings.SplitN(source, "!", 2)
     if len(s2) == 2 {
@@ -165,11 +178,11 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
  *
  */
 func (hcIrc *HcIrc) SendToServer(message string) {
-    //    var i int
-    //    var err error
+//    var i int
+//    var err error
 
     hcIrc.debugPrint("  to server <<<", message)
-    //    i, err =
+//    i, err =
     message = strings.Replace(message, string('\n'), "", -1)
     message = strings.Replace(message, string('\r'), "", -1)
     message = fmt.Sprintf("%s\n", message)
@@ -187,10 +200,10 @@ func (hcIrc *HcIrc) inboundQueueRoutine() {
     for hcIrc.inQueueRunning {
         s = hcIrc.WaitForServerMessage()
         hcIrc.InboundQueue <- s
-//        time.Sleep(hcIrc.FloodThrottle * time.Second)
+//        time.Sleep(time.Duration(hcIrc.FloodThrottle) * time.Second)
     }
 
-    close( hcIrc.InboundQueue )
+    close(hcIrc.InboundQueue)
 }
 
 
@@ -200,7 +213,9 @@ func (hcIrc *HcIrc) inboundQueueRoutine() {
 func (hcIrc *HcIrc) StartInboundQueue() {
     var inChan chan string
 
-    inChan = make( chan string, hcIrc.QueueSize )
+    hcIrc.debugPrint("Starting inbound queue", "")
+
+    inChan = make(chan string, hcIrc.QueueSize)
     hcIrc.InboundQueue = inChan
 
     hcIrc.inQueueRunning = true
@@ -212,6 +227,7 @@ func (hcIrc *HcIrc) StartInboundQueue() {
  *
  */
 func (hcIrc *HcIrc) StopInboundQueue() {
+    hcIrc.debugPrint("Stopping inbound queue", "")
     hcIrc.inQueueRunning = false
 }
 
@@ -221,7 +237,7 @@ func (hcIrc *HcIrc) StopInboundQueue() {
  */
 func (hcIrc *HcIrc) outboundQueueRoutine() {
     for s := range hcIrc.OutboundQueue {
-        hcIrc.SendToServer( s )
+        hcIrc.SendToServer(s)
         time.Sleep(time.Duration(hcIrc.FloodThrottle) * time.Second)
     }
 }
@@ -233,7 +249,9 @@ func (hcIrc *HcIrc) outboundQueueRoutine() {
 func (hcIrc *HcIrc) StartOutboundQueue() {
     var outChan chan string
 
-    outChan = make( chan string, hcIrc.QueueSize )
+    hcIrc.debugPrint("Starting outbound queue", "")
+
+    outChan = make(chan string, hcIrc.QueueSize)
     hcIrc.OutboundQueue = outChan
 
     hcIrc.outQueueRunning = true
@@ -245,8 +263,9 @@ func (hcIrc *HcIrc) StartOutboundQueue() {
  *
  */
 func (hcIrc *HcIrc) StopOutboundQueue() {
+    hcIrc.debugPrint("Stopping outbound queue", "")
     hcIrc.outQueueRunning = false
-    close( hcIrc.OutboundQueue )
+    close(hcIrc.OutboundQueue)
 }
 
 
@@ -280,8 +299,12 @@ func (hcIrc *HcIrc) Connect() {
     connection, err = net.Dial("tcp", hostAddr)
     hcIrc.connection = connection
     if err != nil {
-        // TODO: error handling on failed connection / connection error
+        hcIrc.Error = err.Error()
+        hcIrc.debugPrint( "ERROR establishing connection:", err.Error() )
+        return
     }
+
+    hcIrc.debugPrint( "Connection: Connected to server", "" )
 
     // init I/O handlers
     writer = bufio.NewWriter(connection)
@@ -313,4 +336,30 @@ func (hcIrc *HcIrc) Connect() {
         }
     }
 
+    hcIrc.debugPrint( "Connection: Registered with server", "" )
+
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) Shutdown() {
+    if hcIrc.outQueueRunning {
+        hcIrc.StopOutboundQueue()
+    }
+
+    if hcIrc.inQueueRunning {
+        hcIrc.StopInboundQueue()
+    }
+
+    if hcIrc.connection != nil {
+        hcIrc.connection.Close()
+    }
+
+    hcIrc.connection = nil
+    hcIrc.OutboundQueue = nil
+    hcIrc.InboundQueue = nil
+    hcIrc.reader = nil
+    hcIrc.writer = nil
 }
