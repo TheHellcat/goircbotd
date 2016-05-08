@@ -150,13 +150,14 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
         host = s2[1]
     }
 
+    command = strings.ToUpper(command)
+
     s = fmt.Sprintf("Parsed command '%s' with channel=%s, nick=%s, user=%s, host=%s (source=%s)", command, channel, nick, user, host, source)
     hcIrc.debugPrint(s, "")
 
     if hcIrc.AutohandleSysMsgs {
         hcIrc.HandleSystemMessages(command, channel, nick, user, host, text)
     }
-
     return command, channel, nick, user, host, text
 
 }
