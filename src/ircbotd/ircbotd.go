@@ -16,6 +16,7 @@ import
 
 var cmdArgDebug bool
 var cmdArgDaemon bool
+var cmdArgConsole bool
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -23,10 +24,10 @@ var regedChatCommands map[string]string
 var regedTimedCommands map[string]int
 var hcIrc *hcirc.HcIrc
 
-
 func init() {
     flag.BoolVar(&cmdArgDebug, "debug", false, "Enable debug-mode")
     flag.BoolVar(&cmdArgDaemon, "D", false, "Daemonize (launch into background)")
+    flag.BoolVar(&cmdArgConsole, "c", false, "Enable console (can not be used with -D)")
 }
 
 
@@ -79,7 +80,7 @@ func fetchRegisteredCommands() {
         }
         a1 = strings.Split(strings.Trim(sTimedCommands, " "), " ")
         for _, cmd := range a1 {
-            a2 = strings.Split( cmd, "*" )
+            a2 = strings.Split(cmd, "*")
             i64, _ = strconv.ParseInt(a2[1], 10, 32)
             regedTimedCommands[a2[0]] = int(i64)
         }
@@ -123,7 +124,7 @@ func processPrivmsg(command, channel, nick, user, host, text string) {
     a = strings.SplitN(text, " ", 2)
     cmd = a[0]
     _, isRegedChatCommand = regedChatCommands[cmd]
-//fmt.Println()
+    //fmt.Println()
     if len(a) == 2 {
         param = a[1]
     } else {
@@ -178,22 +179,23 @@ func main() {
 
     flag.Parse()
 
+    // some fancy "who am I splash" output :-)
+    fmt.Printf("\n%s - %s\n  for %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
+        ircbotint.IrcBotParentProject, ircbotint.IrcBotC)
+    // TODO: make this super fancy :-D
+
     // re-launch ourselfs as new process and quit if requested running as background daemon
     if cmdArgDaemon {
         fmt.Printf(": %s\n", os.Args[0])
         cmd = exec.Command(os.Args[0], "")
         err = cmd.Start()
         if err != nil {
-            fmt.Printf("Error launching to background: %s\n", err.Error())
+            fmt.Printf("Error launching to background: %s\n\n", err.Error())
         } else {
-            fmt.Printf("Successfully launched into background")
+            fmt.Printf("Successfully launched into background\n\n")
         }
         return
     }
-
-    // some fancy "who am I splash" output :-)
-    fmt.Printf("\n%s - %s\nfor %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
-        ircbotint.IrcBotParentProject, ircbotint.IrcBotC)
 
     // set up main control channel for communication from all worker-threads
     mainCtrl = make(chan string, 1)

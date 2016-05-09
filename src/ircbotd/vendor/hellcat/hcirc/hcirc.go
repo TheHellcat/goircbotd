@@ -7,6 +7,8 @@ import (
     "strings"
 )
 
+type userlist map[string]string
+
 type HcIrc struct {
     host                 string
     port                 string
@@ -18,18 +20,20 @@ type HcIrc struct {
     Debugmode            bool
     AutohandleSysMsgs    bool
 
-    connection           net.Conn
-    writer               *bufio.Writer
-    reader               *bufio.Reader
+    QueueSize            int
+    FloodThrottle        int
+
     InboundQueue         chan string
     OutboundQueue        chan string
     OutQuickQueue        chan string
+
+    connection           net.Conn
+    writer               *bufio.Writer
+    reader               *bufio.Reader
     inQueueRunning       bool
     outQueueRunning      bool
     outQuickQueueRunning bool
-
-    QueueSize            int
-    FloodThrottle        int
+    channelUsers         map[string]userlist
 
     Error                string
 }
@@ -55,6 +59,7 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         Error: "",
         inQueueRunning: false,
         outQueueRunning: false,
+        channelUsers: make(map[string]userlist),
     }
 }
 
@@ -150,13 +155,23 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
         host = s2[1]
     }
 
+    // some cases where the channel name is in the text area (for whatever reason, like on some servers JOINs)
+    if "" == channel {
+        if len(text) > 1 {
+            if "#" == text[0:1] {
+                channel = text
+                text = ""
+            }
+        }
+    }
+
     command = strings.ToUpper(command)
 
     s = fmt.Sprintf("Parsed command '%s' with channel=%s, nick=%s, user=%s, host=%s (source=%s)", command, channel, nick, user, host, source)
     hcIrc.debugPrint(s, "")
 
     if hcIrc.AutohandleSysMsgs {
-        hcIrc.HandleSystemMessages(command, channel, nick, user, host, text)
+        hcIrc.HandleSystemMessages(command, channel, nick, user, host, text, message)
     }
     return command, channel, nick, user, host, text
 
@@ -166,12 +181,51 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
 /**
  *
  */
-func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, text string) {
+func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, text, raw string) {
     var s string
+    var i int
+    var a []string
 
+    // keepalive pings from the server
     if command == "PING" {
         s = fmt.Sprintf("PONG :%s", text)
         hcIrc.SendToServer(s)
+    }
+
+    // messages about people coming and going (NAMES lists, JOINs, PARTs, QUITs, etc.)
+    if "353" == command {
+        // NAMES list upon us joining a channel
+
+        // first get the channel name from the raw message, it's the last parameter of the numeric command
+        if ":" == raw[0:1] {
+            i = 1
+        } else {
+            i = 0
+        }
+        a = strings.Split(raw, ":")
+        s = a[i]
+        a = strings.Split(strings.Trim(s, " "), " ")
+        channel = a[len(a) - 1]
+
+        // now add all users
+        a = strings.Split(strings.Trim(text, " "), " ")
+        for _, nick = range a {
+            hcIrc.channelUserJoin(channel, nick)
+        }
+    }
+    if "JOIN" == command {
+        // a user entering channel
+        hcIrc.channelUserJoin(channel, nick)
+    }
+    if "PART" == command {
+        // a user leaving channel
+        hcIrc.channelUserPart(channel, nick)
+    }
+    if "QUIT" == command {
+        // user left the server altogether (i.e. needs to be "PARTed" from all channels)
+        for s = range hcIrc.channelUsers {
+            hcIrc.channelUserPart(s, nick)
+        }
     }
 }
 
@@ -253,7 +307,6 @@ func (hcIrc *HcIrc) Connect() {
     i = 1
     for i == 1 {
         s = hcIrc.WaitForServerMessage()
-        // hcIrc.HandleSystemMessages( s )
         command, _, _, _, _, _ := hcIrc.ParseMessage(s)
         if command == "376" {
             i = 2
@@ -290,4 +343,5 @@ func (hcIrc *HcIrc) Shutdown() {
     hcIrc.InboundQueue = nil
     hcIrc.reader = nil
     hcIrc.writer = nil
+    hcIrc.channelUsers = nil
 }
