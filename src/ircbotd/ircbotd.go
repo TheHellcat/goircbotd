@@ -6,6 +6,7 @@ import
     "flag"
     "time"
     "strings"
+    "strconv"
     "os"
     "os/exec"
     "encoding/json"
@@ -18,8 +19,10 @@ var cmdArgDaemon bool
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
-var regedChatCommands []string
-var regedTimedCommands []string
+var regedChatCommands map[string]string
+var regedTimedCommands map[string]int
+var hcIrc *hcirc.HcIrc
+
 
 func init() {
     flag.BoolVar(&cmdArgDebug, "debug", false, "Enable debug-mode")
@@ -39,6 +42,9 @@ func fetchRegisteredCommands() {
     var tmpMap map[string]interface{}
     var sChatCommands string
     var sTimedCommands string
+    var a1 []string
+    var a2 []string
+    var i64 int64
 
     sChatCommands = ""
     sTimedCommands = ""
@@ -66,9 +72,17 @@ func fetchRegisteredCommands() {
             }
         }
 
-        // now lets split those temp. strings into nifty arrays holding all registered commands
-        regedChatCommands = strings.Split(strings.Trim(sChatCommands, " "), " ")
-        regedTimedCommands = strings.Split(strings.Trim(sTimedCommands, " "), " ")
+        // now lets write the commands into our maps
+        a1 = strings.Split(strings.Trim(sChatCommands, " "), " ")
+        for _, cmd := range a1 {
+            regedChatCommands[cmd] = "1"
+        }
+        a1 = strings.Split(strings.Trim(sTimedCommands, " "), " ")
+        for _, cmd := range a1 {
+            a2 = strings.Split( cmd, "*" )
+            i64, _ = strconv.ParseInt(a2[1], 10, 32)
+            regedTimedCommands[a2[0]] = int(i64)
+        }
     } else {
         // TODO: handle the error
     }
@@ -78,7 +92,21 @@ func fetchRegisteredCommands() {
 /**
  *
  */
-func interfaceRegisteredCommand(command, channel, nick, user, host, text string) {
+func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param string) {
+
+    // test only
+    if "!test1" == cmd {
+        s := fmt.Sprintf("JOIN %s", param)
+        hcIrc.OutQuickQueue <- s
+    }
+    if "!test2" == cmd {
+        s := fmt.Sprintf("PRIVMSG %s :%s", channel, param)
+        hcIrc.OutQuickQueue <- s
+    }
+    if "!test3" == cmd {
+        mainCtrl <- "SHUTDOWN"
+    }
+    // test only
 
 }
 
@@ -87,8 +115,24 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, text string)
  *
  */
 func processPrivmsg(command, channel, nick, user, host, text string) {
-    // TODO: - check if "command" is in the list of registered command
-    // TODO: - call interfaceRegisteredCommand() in case it is
+    var isRegedChatCommand bool
+    var a []string
+    var cmd string
+    var param string
+
+    a = strings.SplitN(text, " ", 2)
+    cmd = a[0]
+    _, isRegedChatCommand = regedChatCommands[cmd]
+//fmt.Println()
+    if len(a) == 2 {
+        param = a[1]
+    } else {
+        param = ""
+    }
+
+    if isRegedChatCommand {
+        go interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param)
+    }
 }
 
 
@@ -127,7 +171,6 @@ func timedCommandsScheduler() {
 
 func main() {
 
-    var hcIrc *hcirc.HcIrc
     var cmd *exec.Cmd
     var err error
     var mainRunning bool
@@ -148,12 +191,6 @@ func main() {
         return
     }
 
-    // fetch main config from parent application
-    // TODO: fetch main config
-
-    // fetch registered commands from parent application
-    fetchRegisteredCommands()
-
     // some fancy "who am I splash" output :-)
     fmt.Printf("\n%s - %s\nfor %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
         ircbotint.IrcBotParentProject, ircbotint.IrcBotC)
@@ -166,7 +203,17 @@ func main() {
 
     for !shutdown {
 
-        hcIrc = hcirc.New("irc.hellcat.net", "6667", "Testuser", "Testnick", "")
+        // fetch main config from parent application
+        // TODO: fetch main config
+
+        // init some stuff
+        regedChatCommands = make(map[string]string)
+        regedTimedCommands = make(map[string]int)
+
+        // fetch registered commands from parent application
+        fetchRegisteredCommands()
+
+        hcIrc = hcirc.New("irc.hellcat.net", "6667", "Bottest", "Bottest", "")
         hcIrc.Debugmode = cmdArgDebug
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
@@ -185,14 +232,20 @@ func main() {
             mainRunning = true
             for mainRunning {
                 s = <-mainCtrl
-                // TODO: handle messages from worker-threads
-                s = s // silencing the compiler about currently unused variable
+
+                if "SHUTDOWN" == s {
+                    shutdown = true
+                    running = false
+                    mainRunning = false
+                }
             }
 
         }
 
         hcIrc.Shutdown()
         hcIrc = nil
+        regedChatCommands = nil
+        regedTimedCommands = nil
 
         if !shutdown {
             time.Sleep(time.Duration(10) * time.Second)

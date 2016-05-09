@@ -6,8 +6,3 @@ const (
     IrcBotParentProject = "HC PHP IRC bot implementation"
     IrcBotC             = "written by HELLCAT (hellcat@hellcat.net)"
 )
-
-
-//func GetVersionInfo() (version, name, parent, credits string) {
-//    return IrcBotVersion, IrcBotName, IrcBotParentProject, IrcBotC
-//}
