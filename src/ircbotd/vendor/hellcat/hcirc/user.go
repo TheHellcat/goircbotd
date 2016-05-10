@@ -8,6 +8,37 @@ import (
 
 
 /**
+ *
+ */
+func (hcIrc *HcIrc) AddUserToChannel( channel, nick string ) {
+
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) RemoveUserFromChannel( channel, nick string ) {
+
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) GetChannelUsers( channel string ) map[string]userinfo {
+
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) NormalizeNick( nick string ) string {
+
+}
+
+/**
  * Adds a user to a channels userlist
  */
 func (hcIrc *HcIrc) channelUserJoin(channel, nick string) {

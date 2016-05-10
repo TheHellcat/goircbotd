@@ -9,6 +9,12 @@ import (
 
 type userlist map[string]string
 
+type userinfo struct {
+    NickDislpayname     string
+    NickNormalizedName  string
+    Modes               string
+}
+
 type HcIrc struct {
     host                 string
     port                 string
