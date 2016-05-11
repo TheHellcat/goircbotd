@@ -50,7 +50,7 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson = "{\"chatcommands\":[    {\"command\":\"!test1\"},    {\"command\":\"!test2\"},    {\"command\":\"!test3\"}],\"timedcommands\":[    {\"command\":\"-timertest1\", \"timer\":\"30\"},    {\"command\":\"-timertest2\", \"timer\":\"10\"},    {\"command\":\"-timertest3\", \"timer\":\"60\"}]}"
+    sJson = "{\"chatcommands\":[    {\"command\":\"!test1\"},    {\"command\":\"!test2\"},    {\"command\":\"!test3\"},    {\"command\":\"!test4\"}],\"timedcommands\":[    {\"command\":\"-timertest1\", \"timer\":\"30\"},    {\"command\":\"-timertest2\", \"timer\":\"10\"},    {\"command\":\"-timertest3\", \"timer\":\"60\"}]}"
 
     jsonDecoder = json.NewDecoder(strings.NewReader(sJson))
 
@@ -107,6 +107,9 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
     if "!test3" == cmd {
         mainCtrl <- "SHUTDOWN"
     }
+    if "!test4" == cmd {
+        mainCtrl <- "RESTART"
+    }
     // test only
 
 }
@@ -160,6 +163,10 @@ func serverListener(hcIrc *hcirc.HcIrc) {
             }
         }
     }
+
+    if cmdArgDebug {
+        fmt.Printf( "[LISTENERDEBUG] server listener thread ended" )
+    }
 }
 
 
@@ -184,6 +191,11 @@ func main() {
         ircbotint.IrcBotParentProject, ircbotint.IrcBotC)
     // TODO: make this super fancy :-D
 
+    if cmdArgConsole && cmdArgDaemon {
+        fmt.Printf( "ERROR: can not run as daemon/backgrounded with interactive console!\n       -c and -D can not be used simultaniously!\n\n" )
+        return
+    }
+
     // re-launch ourselfs as new process and quit if requested running as background daemon
     if cmdArgDaemon {
         fmt.Printf(": %s\n", os.Args[0])
@@ -200,10 +212,10 @@ func main() {
     // set up main control channel for communication from all worker-threads
     mainCtrl = make(chan string, 1)
 
-    // flag to keep all worker threads running or tell them to exit
-    running = true
-
     for !shutdown {
+
+        // flag to keep all worker threads running or tell them to exit
+        running = true
 
         // fetch main config from parent application
         // TODO: fetch main config
@@ -231,12 +243,25 @@ func main() {
             // start timed commands
             go timedCommandsScheduler()
 
+            // start console if requested
+            if cmdArgConsole {
+                go hcIrc.StartConsole(mainCtrl)
+            }
+
             mainRunning = true
             for mainRunning {
                 s = <-mainCtrl
 
+                if cmdArgDebug {
+                    fmt.Printf( "[MAINDEBUG] received control command: %s\n", s )
+                }
+
                 if "SHUTDOWN" == s {
                     shutdown = true
+                    running = false
+                    mainRunning = false
+                }
+                if "RESTART" == s {
                     running = false
                     mainRunning = false
                 }
@@ -254,5 +279,8 @@ func main() {
         }
 
     }
+
+    fmt.Printf( "\nGood bye! Bot shutting down....\n\n" )
+    time.Sleep(time.Duration(2) * time.Second)
 
 }

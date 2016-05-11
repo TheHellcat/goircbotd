@@ -5,14 +5,15 @@ import (
     "net"
     "bufio"
     "strings"
+    "hellcat/hcthreadutils"
 )
 
 type userlist map[string]string
 
 type userinfo struct {
     NickDislpayname     string
+    NickModes           string
     NickNormalizedName  string
-    Modes               string
 }
 
 type HcIrc struct {
@@ -344,10 +345,13 @@ func (hcIrc *HcIrc) Shutdown() {
         hcIrc.connection.Close()
     }
 
+    // wait for all threads/routines to have properly ended
+    // TODO: DOOO EEET
+
     hcIrc.connection = nil
-    hcIrc.OutboundQueue = nil
-    hcIrc.InboundQueue = nil
     hcIrc.reader = nil
     hcIrc.writer = nil
     hcIrc.channelUsers = nil
+
+    hcIrc.Error = ""
 }

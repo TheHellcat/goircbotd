@@ -17,6 +17,8 @@ func (hcIrc *HcIrc) inboundQueueRoutine() {
     }
 
     close(hcIrc.InboundQueue)
+    hcIrc.InboundQueue = nil
+    hcIrc.debugPrint("Inbound queue routine ended", "")
 }
 
 
@@ -53,6 +55,9 @@ func (hcIrc *HcIrc) outboundQueueRoutine() {
         hcIrc.SendToServer(s)
         time.Sleep(time.Duration(hcIrc.FloodThrottle) * time.Second)
     }
+    hcIrc.debugPrint("Outbound queue routine ended", "")
+    hcIrc.outQueueRunning = false
+    hcIrc.OutboundQueue = nil
 }
 
 
@@ -90,6 +95,9 @@ func (hcIrc *HcIrc) outQuickQueueRoutine() {
         hcIrc.SendToServer(s)
         time.Sleep( (time.Duration(hcIrc.FloodThrottle) * time.Second)/2 )
     }
+    hcIrc.debugPrint("Quick outbound queue routine ended", "")
+    hcIrc.outQuickQueueRunning = false
+    hcIrc.OutQuickQueue = nil
 }
 
 
