@@ -25,11 +25,39 @@ var regedChatCommands map[string]string
 var regedTimedCommands map[string]int
 var hcIrc *hcirc.HcIrc
 var listenerThreadId string
+var timedcommandsThreadId string
+
+type strMainConfig struct {
+    botNick     string
+    botUsername string
+    botRealname string
+
+    netHost     string
+    netPort     string
+    netPassword string
+    netChannels []string
+}
+
+var mainConfig strMainConfig
 
 func init() {
     flag.BoolVar(&cmdArgDebug, "debug", false, "Enable debug-mode")
     flag.BoolVar(&cmdArgDaemon, "D", false, "Daemonize (launch into background)")
     flag.BoolVar(&cmdArgConsole, "c", false, "Enable console (can not be used with -D)")
+}
+
+
+/**
+ *
+ */
+func fetchMainConfig() {
+    // TODO: actually fetch this from the PHP side interface API
+    mainConfig.botNick = "BotTest"
+    mainConfig.botUsername = "Testbot"
+    mainConfig.botRealname = "Testus Bottus"
+    mainConfig.netHost = "irc-node1.hellcat.net"
+    mainConfig.netPort = "6667"
+    mainConfig.netChannels = []string{"#test"}
 }
 
 
@@ -152,7 +180,7 @@ func serverListener(hcIrc *hcirc.HcIrc) {
 
     listenerThreadId = hcthreadutils.GetRoutineId()
     if cmdArgDebug {
-        fmt.Printf("[LISTENERDEBUG] server listener thread started, ID=%s", listenerThreadId)
+        fmt.Printf("[LISTENERDEBUG] server listener thread started, ID=%s\n", listenerThreadId)
     }
 
     for running {
@@ -172,7 +200,7 @@ func serverListener(hcIrc *hcirc.HcIrc) {
     }
 
     if cmdArgDebug {
-        fmt.Printf("[LISTENERDEBUG] server listener thread ended")
+        fmt.Printf("[LISTENERDEBUG] server listener thread ended\n")
     }
 }
 
@@ -181,7 +209,14 @@ func serverListener(hcIrc *hcirc.HcIrc) {
  *
  */
 func timedCommandsScheduler() {
+    timedcommandsThreadId = hcthreadutils.GetRoutineId()
+    if cmdArgDebug {
+        fmt.Printf("[TIMERDEBUG] command scheduler thread started, ID=%s\n", timedcommandsThreadId)
+    }
 
+    if cmdArgDebug {
+        fmt.Printf("[TIMERDEBUG] command scheduler thread ended\n")
+    }
 }
 
 func main() {
@@ -231,10 +266,14 @@ func main() {
         regedChatCommands = make(map[string]string)
         regedTimedCommands = make(map[string]int)
 
+        // fetch main configuration from parent application
+        fetchMainConfig()
+
         // fetch registered commands from parent application
         fetchRegisteredCommands()
 
-        hcIrc = hcirc.New("irc.hellcat.net", "6667", "Bottest", "Bottest", "")
+        hcIrc = hcirc.New(mainConfig.netHost, mainConfig.netPort, mainConfig.botUsername, mainConfig.botNick, mainConfig.netPassword)
+        hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
@@ -249,6 +288,12 @@ func main() {
 
             // start timed commands
             go timedCommandsScheduler()
+
+            // join all configured auto-join channels
+            for _, s = range mainConfig.netChannels {
+                s = fmt.Sprintf("JOIN %s", s)
+                hcIrc.OutQuickQueue <- s
+            }
 
             // start console if requested
             if cmdArgConsole {
@@ -277,7 +322,7 @@ func main() {
         }
 
         hcIrc.Shutdown()
-        hcthreadutils.WaitForRoutinesEndById([]string{listenerThreadId})
+        hcthreadutils.WaitForRoutinesEndById([]string{listenerThreadId, timedcommandsThreadId})
         hcIrc = nil
         regedChatCommands = nil
         regedTimedCommands = nil

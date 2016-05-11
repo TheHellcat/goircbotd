@@ -72,6 +72,18 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
     }
 }
 
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) SetRealname( name string ) {
+    hcIrc.name = name
+}
+
+
+/**
+ *
+ */
 func (hcIrc *HcIrc) debugPrint(s1, s2 string) {
     var s string
 
