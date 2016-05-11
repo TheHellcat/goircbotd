@@ -11,6 +11,7 @@ import
     "os/exec"
     "encoding/json"
     "hellcat/hcirc"
+    "hellcat/hcthreadutils"
     "ircbotd/internal/ircbotint"
 )
 
@@ -23,6 +24,7 @@ var running bool = true
 var regedChatCommands map[string]string
 var regedTimedCommands map[string]int
 var hcIrc *hcirc.HcIrc
+var listenerThreadId string
 
 func init() {
     flag.BoolVar(&cmdArgDebug, "debug", false, "Enable debug-mode")
@@ -148,6 +150,11 @@ func serverListener(hcIrc *hcirc.HcIrc) {
     var s string
     var command, channel, nick, user, host, text string
 
+    listenerThreadId = hcthreadutils.GetRoutineId()
+    if cmdArgDebug {
+        fmt.Printf("[LISTENERDEBUG] server listener thread started, ID=%s", listenerThreadId)
+    }
+
     for running {
         s = <-hcIrc.InboundQueue
 
@@ -165,7 +172,7 @@ func serverListener(hcIrc *hcirc.HcIrc) {
     }
 
     if cmdArgDebug {
-        fmt.Printf( "[LISTENERDEBUG] server listener thread ended" )
+        fmt.Printf("[LISTENERDEBUG] server listener thread ended")
     }
 }
 
@@ -192,7 +199,7 @@ func main() {
     // TODO: make this super fancy :-D
 
     if cmdArgConsole && cmdArgDaemon {
-        fmt.Printf( "ERROR: can not run as daemon/backgrounded with interactive console!\n       -c and -D can not be used simultaniously!\n\n" )
+        fmt.Printf("ERROR: can not run as daemon/backgrounded with interactive console!\n       -c and -D can not be used simultaniously!\n\n")
         return
     }
 
@@ -253,7 +260,7 @@ func main() {
                 s = <-mainCtrl
 
                 if cmdArgDebug {
-                    fmt.Printf( "[MAINDEBUG] received control command: %s\n", s )
+                    fmt.Printf("[MAINDEBUG] received control command: %s\n", s)
                 }
 
                 if "SHUTDOWN" == s {
@@ -270,6 +277,7 @@ func main() {
         }
 
         hcIrc.Shutdown()
+        hcthreadutils.WaitForRoutinesEndById([]string{listenerThreadId})
         hcIrc = nil
         regedChatCommands = nil
         regedTimedCommands = nil
@@ -280,7 +288,7 @@ func main() {
 
     }
 
-    fmt.Printf( "\nGood bye! Bot shutting down....\n\n" )
+    fmt.Printf("\nGood bye! Bot shutting down....\n\n")
     time.Sleep(time.Duration(2) * time.Second)
 
 }

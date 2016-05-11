@@ -1,8 +1,22 @@
 package hcirc
 
 import (
+    "fmt"
     "time"
+    "hellcat/hcthreadutils"
 )
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) registerThread(name, id string) {
+    var s string
+
+    hcIrc.threadIds[name] = id
+    s = fmt.Sprintf("Registered thread: %s (ID:%s)", name, id)
+    hcIrc.debugPrint(s, "")
+}
 
 
 /**
@@ -10,6 +24,8 @@ import (
  */
 func (hcIrc *HcIrc) inboundQueueRoutine() {
     var s string
+
+    hcIrc.registerThread(hcthreadutils.GetCurrentName(), hcthreadutils.GetRoutineId())
 
     for hcIrc.inQueueRunning {
         s = hcIrc.WaitForServerMessage()
@@ -51,6 +67,8 @@ func (hcIrc *HcIrc) StopInboundQueue() {
  *
  */
 func (hcIrc *HcIrc) outboundQueueRoutine() {
+    hcIrc.registerThread(hcthreadutils.GetCurrentName(), hcthreadutils.GetRoutineId())
+
     for s := range hcIrc.OutboundQueue {
         hcIrc.SendToServer(s)
         time.Sleep(time.Duration(hcIrc.FloodThrottle) * time.Second)
@@ -91,9 +109,11 @@ func (hcIrc *HcIrc) StopOutboundQueue() {
  *
  */
 func (hcIrc *HcIrc) outQuickQueueRoutine() {
+    hcIrc.registerThread(hcthreadutils.GetCurrentName(), hcthreadutils.GetRoutineId())
+
     for s := range hcIrc.OutQuickQueue {
         hcIrc.SendToServer(s)
-        time.Sleep( (time.Duration(hcIrc.FloodThrottle) * time.Second)/2 )
+        time.Sleep((time.Duration(hcIrc.FloodThrottle) * time.Second) / 2)
     }
     hcIrc.debugPrint("Quick outbound queue routine ended", "")
     hcIrc.outQuickQueueRunning = false

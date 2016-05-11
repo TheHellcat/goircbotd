@@ -11,9 +11,9 @@ import (
 type userlist map[string]string
 
 type userinfo struct {
-    NickDislpayname     string
-    NickModes           string
-    NickNormalizedName  string
+    NickDislpayname    string
+    NickModes          string
+    NickNormalizedName string
 }
 
 type HcIrc struct {
@@ -41,6 +41,7 @@ type HcIrc struct {
     outQueueRunning      bool
     outQuickQueueRunning bool
     channelUsers         map[string]userlist
+    threadIds            map[string]string
 
     Error                string
 }
@@ -67,6 +68,7 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         inQueueRunning: false,
         outQueueRunning: false,
         channelUsers: make(map[string]userlist),
+        threadIds: make(map[string]string),
     }
 }
 
@@ -346,7 +348,10 @@ func (hcIrc *HcIrc) Shutdown() {
     }
 
     // wait for all threads/routines to have properly ended
-    // TODO: DOOO EEET
+    hcthreadutils.WaitForRoutinesEndById([]string{
+        hcIrc.threadIds["inboundQueueRoutine"],
+        hcIrc.threadIds["outboundQueueRoutine"],
+        hcIrc.threadIds["outQuickQueueRoutine"]})
 
     hcIrc.connection = nil
     hcIrc.reader = nil
