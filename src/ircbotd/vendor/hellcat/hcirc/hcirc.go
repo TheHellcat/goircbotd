@@ -46,7 +46,10 @@ type HcIrc struct {
     Error                string
 }
 
+
 func init() {
+    consoleRegisteredCommands = make(map[string]consoleCommandCallback)
+    consoleRegisteredCommandInfos = make( map[string]string )
 }
 
 func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcIrc *HcIrc) {

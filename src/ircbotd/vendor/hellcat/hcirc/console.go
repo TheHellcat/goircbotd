@@ -2,16 +2,33 @@ package hcirc
 
 import (
     "fmt"
-    "os"
     "bufio"
     "strings"
+    "io"
 )
+
+
+type consoleCommandCallback func(string) string
+
+
+var consoleRegisteredCommands map[string]consoleCommandCallback
+var consoleRegisteredCommandInfos map[string]string
 
 
 /**
  *
  */
-func (hcIrc *HcIrc) StartConsole(ctrlChan chan string) {
+func (hcIrc *HcIrc) RegisterConsoleCommand( command string, description string, function consoleCommandCallback ) {
+    command = strings.ToLower( command )
+    consoleRegisteredCommands[command] = function
+    consoleRegisteredCommandInfos[command] = description
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) StartConsole(ctrlChan chan string, ioRead io.Reader, ioWrite io.Writer) {
     var ioReader *bufio.Reader
     var ioWriter *bufio.Writer
     var input string
@@ -19,15 +36,16 @@ func (hcIrc *HcIrc) StartConsole(ctrlChan chan string) {
     var err error
     var consoleRunning bool
     var output string
+    var exists bool
+    var function consoleCommandCallback
+    var a []string
+    var s string
+    var t string
 
-    ioReader = bufio.NewReader(os.Stdin)
-    ioWriter = bufio.NewWriter(os.Stdout)
+    ioReader = bufio.NewReader(ioRead)
+    ioWriter = bufio.NewWriter(ioWrite)
 
     fmt.Printf("\nStarting interactive console:\n\n")
-
-    // WIP NOTE
-    fmt.Printf("!!! Interactive console is currently pretty much useless!\n    It's only the base construct at the moment to add actual functionality, later!\n\n")
-    // REMOVE ONCE THIS ACTUALLY DOES SOMETHING
 
     consoleRunning = true
     for consoleRunning {
@@ -40,21 +58,39 @@ func (hcIrc *HcIrc) StartConsole(ctrlChan chan string) {
         inputLowered = strings.ToLower(input)
 
         if nil == err {
-            if "die" == inputLowered || "quit" == inputLowered || "exit" == inputLowered {
+            if "" == input {
+                // NOP
+            } else if "die" == inputLowered {
                 ctrlChan <- "SHUTDOWN"
                 consoleRunning = false
-            } else if "" == input {
-                // NOP
             } else if "restart" == inputLowered {
                 ctrlChan <- "RESTART"
                 consoleRunning = false
             } else if "help" == inputLowered {
-
-            } else if "close" == inputLowered {
+                s = fmt.Sprintf( "Internal commands:\n  die  - shuts down the bot\n  retart - restarts the bot\n  exit - quits the console\n\n" )
+                s = fmt.Sprintf( "%sRegistered commands:\n", s)
+                for t, _ = range consoleRegisteredCommands {
+                    s = fmt.Sprintf( "%s  %s - %s\n", s, t, consoleRegisteredCommandInfos[t])
+                }
+                ioWriter.WriteString( s )
+            } else if "exit" == inputLowered {
                 consoleRunning = false
             } else {
-                output = fmt.Sprintf("Whooopsy, no idea what you're talking about there (i.e. command not recognized)\n")
-                ioWriter.WriteString(output)
+                a = strings.SplitN( inputLowered, " ", 2 )
+                function, exists = consoleRegisteredCommands[a[0]]
+                if exists {
+                    a = strings.SplitN( input, " ", 2 )
+                    if len( a ) > 1 {
+                        s = a[1]
+                    } else {
+                        s = ""
+                    }
+                    s = function( s )
+                    ioWriter.WriteString( s )
+                } else {
+                    output = fmt.Sprintf("Whooopsy, no idea what you're talking about there (i.e. command not recognized)\nMaybe try \"help\".\n")
+                    ioWriter.WriteString(output)
+                }
             }
         } else {
             consoleRunning = false
