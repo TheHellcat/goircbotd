@@ -33,6 +33,7 @@ type HcIrc struct {
     InboundQueue         chan string
     OutboundQueue        chan string
     OutQuickQueue        chan string
+    JoinedChannels       map[string]string
 
     connection           net.Conn
     writer               *bufio.Writer
@@ -69,6 +70,7 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         outQueueRunning: false,
         channelUsers: make(map[string]userlist),
         threadIds: make(map[string]string),
+        JoinedChannels: make(map[string]string),
     }
 }
 
@@ -76,7 +78,7 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
 /**
  *
  */
-func (hcIrc *HcIrc) SetRealname( name string ) {
+func (hcIrc *HcIrc) SetRealname(name string) {
     hcIrc.name = name
 }
 

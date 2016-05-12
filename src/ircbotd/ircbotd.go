@@ -80,7 +80,7 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson = "{\"chatcommands\":[    {\"command\":\"!test1\"},    {\"command\":\"!test2\"},    {\"command\":\"!test3\"},    {\"command\":\"!test4\"}],\"timedcommands\":[    {\"command\":\"-timertest1\", \"timer\":\"30\"},    {\"command\":\"-timertest2\", \"timer\":\"10\"},    {\"command\":\"-timertest3\", \"timer\":\"60\"}]}"
+    sJson = "{\"chatcommands\":[    {\"command\":\"!test1\"},    {\"command\":\"!test2\"},    {\"command\":\"!test3\"},    {\"command\":\"!test4\"},    {\"command\":\"!test5\"}],\"timedcommands\":[    {\"command\":\"-timertest1\", \"timer\":\"30\"},    {\"command\":\"-timertest2\", \"timer\":\"10\"},    {\"command\":\"-timertest3\", \"timer\":\"60\"}]}"
 
     jsonDecoder = json.NewDecoder(strings.NewReader(sJson))
 
@@ -139,6 +139,12 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
     }
     if "!test4" == cmd {
         mainCtrl <- "RESTART"
+    }
+    if "!test5" == cmd {
+        for joined := range hcIrc.JoinedChannels {
+            s := fmt.Sprintf("PRIVMSG %s :I am in %s", channel, joined)
+            hcIrc.OutboundQueue <- s
+        }
     }
     // test only
 

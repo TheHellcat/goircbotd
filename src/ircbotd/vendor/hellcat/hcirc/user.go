@@ -81,6 +81,13 @@ func (hcIrc *HcIrc) channelUserJoin(channel, nick string) {
 
     hcIrc.channelUsers[channel] = uList
 
+    // check if we ourselves just joined that room and remember we're in here if so
+    if s == hcIrc.NormalizeNick(hcIrc.nick) {
+        // jap, it's us
+        hcIrc.JoinedChannels[channel] = channel
+        hcIrc.debugPrint("Joined channel:", channel)
+    }
+
     if hcIrc.Debugmode {
         t := ""
         for _, u := range uList {
