@@ -8,7 +8,7 @@ import (
 )
 
 
-type consoleCommandCallback func(string) string
+type consoleCommandCallback func(string, string) string
 
 
 var consoleRegisteredCommands map[string]consoleCommandCallback
@@ -85,7 +85,7 @@ func (hcIrc *HcIrc) StartConsole(ctrlChan chan string, ioRead io.Reader, ioWrite
                     } else {
                         s = ""
                     }
-                    s = function( s )
+                    s = function( a[0], s )
                     ioWriter.WriteString( s )
                 } else {
                     output = fmt.Sprintf("Whooopsy, no idea what you're talking about there (i.e. command not recognized)\nMaybe try \"help\".\n")

@@ -230,6 +230,7 @@ func main() {
         // init some stuff
         regedChatCommands = make(map[string]string)
         regedTimedCommands = make(map[string]int)
+        // regedConsoleCommands = make(map[string]string)
 
         // fetch registered commands from parent application
         fetchRegisteredCommands()
@@ -238,6 +239,9 @@ func main() {
         hcIrc.Debugmode = cmdArgDebug
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
+
+            // register console commands
+            hcIrc.RegisterAdditionalConsoleCommands()
 
             // fire up server message queues
             hcIrc.StartInboundQueue()
