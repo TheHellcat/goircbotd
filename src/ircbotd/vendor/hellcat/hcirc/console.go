@@ -7,9 +7,7 @@ import (
     "io"
 )
 
-
 type consoleCommandCallback func(string, string) string
-
 
 var consoleRegisteredCommands map[string]consoleCommandCallback
 var consoleRegisteredCommandInfos map[string]string
@@ -18,8 +16,8 @@ var consoleRegisteredCommandInfos map[string]string
 /**
  *
  */
-func (hcIrc *HcIrc) RegisterConsoleCommand( command string, description string, function consoleCommandCallback ) {
-    command = strings.ToLower( command )
+func (hcIrc *HcIrc) RegisterConsoleCommand(command string, description string, function consoleCommandCallback) {
+    command = strings.ToLower(command)
     consoleRegisteredCommands[command] = function
     consoleRegisteredCommandInfos[command] = description
 }
@@ -67,26 +65,26 @@ func (hcIrc *HcIrc) StartConsole(ctrlChan chan string, ioRead io.Reader, ioWrite
                 ctrlChan <- "RESTART"
                 consoleRunning = false
             } else if "help" == inputLowered {
-                s = fmt.Sprintf( "Internal commands:\n  die  - shuts down the bot\n  retart - restarts the bot\n  exit - quits the console\n\n" )
-                s = fmt.Sprintf( "%sRegistered commands:\n", s)
+                s = fmt.Sprintf("Internal commands:\n  die  - shuts down the bot\n  retart - restarts the bot\n  exit - quits the console\n\n")
+                s = fmt.Sprintf("%sRegistered commands:\n", s)
                 for t, _ = range consoleRegisteredCommands {
-                    s = fmt.Sprintf( "%s  %s - %s\n", s, t, consoleRegisteredCommandInfos[t])
+                    s = fmt.Sprintf("%s  %s - %s\n", s, t, consoleRegisteredCommandInfos[t])
                 }
-                ioWriter.WriteString( s )
+                ioWriter.WriteString(s)
             } else if "exit" == inputLowered {
                 consoleRunning = false
             } else {
-                a = strings.SplitN( inputLowered, " ", 2 )
+                a = strings.SplitN(inputLowered, " ", 2)
                 function, exists = consoleRegisteredCommands[a[0]]
                 if exists {
-                    a = strings.SplitN( input, " ", 2 )
-                    if len( a ) > 1 {
+                    a = strings.SplitN(input, " ", 2)
+                    if len(a) > 1 {
                         s = a[1]
                     } else {
                         s = ""
                     }
-                    s = function( a[0], s )
-                    ioWriter.WriteString( s )
+                    s = function(a[0], s)
+                    ioWriter.WriteString(s)
                 } else {
                     output = fmt.Sprintf("Whooopsy, no idea what you're talking about there (i.e. command not recognized)\nMaybe try \"help\".\n")
                     ioWriter.WriteString(output)

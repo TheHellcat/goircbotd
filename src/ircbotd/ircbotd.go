@@ -307,7 +307,7 @@ func main() {
 
             // start console if requested
             if cmdArgConsole {
-                go hcIrc.StartConsole(mainCtrl)
+                go hcIrc.StartConsole(mainCtrl, os.Stdin, os.Stdout)
             }
 
             mainRunning = true
