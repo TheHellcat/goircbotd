@@ -289,14 +289,23 @@ func (hcIrc *HcIrc) Connect() {
     var writer *bufio.Writer
     var reader *bufio.Reader
 
-    // resolv host IP and build full address string
+    // reset the internal error variable
+    hcIrc.Error = ""
+
+    // resolve host IP and build full address string
+    hcIrc.debugPrint("Looking up", hcIrc.host)
     ips, err = net.LookupIP(hcIrc.host)
+    if err != nil {
+        hcIrc.debugPrint("Error looking up DNS:", err.Error())
+        hcIrc.Error = err.Error()
+        return
+    }
     ip = ips[0]
     hostIp = ip.String()
     hostPort = hcIrc.port
     hostAddr = fmt.Sprintf("%s:%s", hostIp, hostPort)
 
-    hcIrc.debugPrint("Connecting to:", hostAddr)
+    hcIrc.debugPrint("Trying to connect to:", hostAddr)
 
     // connect
     connection, err = net.Dial("tcp", hostAddr)

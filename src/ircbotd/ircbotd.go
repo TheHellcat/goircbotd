@@ -285,6 +285,8 @@ func main() {
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
 
+            fmt.Printf("(i) Connected to %s:%s\n", mainConfig.netHost, mainConfig.netPort)
+
             // register console commands
             hcIrc.RegisterAdditionalConsoleCommands()
 
@@ -329,6 +331,8 @@ func main() {
                 }
             }
 
+        } else {
+            fmt.Printf("(!) Failed to connecto to %s:%s - %s\n", mainConfig.netHost, mainConfig.netPort, hcIrc.Error)
         }
 
         hcIrc.Shutdown()
