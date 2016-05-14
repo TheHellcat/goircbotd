@@ -13,6 +13,7 @@ import
     "hellcat/hcirc"
     "hellcat/hcthreadutils"
     "ircbotd/internal/ircbotint"
+    "ircbotd/internal/ircbotext"
 )
 
 var cmdArgDebug bool
@@ -279,6 +280,9 @@ func main() {
         // fetch registered commands from parent application
         fetchRegisteredCommands()
 
+        // init all configured extensions
+        ircbotext.InitExtensions(hcIrc)
+
         hcIrc = hcirc.New(mainConfig.netHost, mainConfig.netPort, mainConfig.botUsername, mainConfig.botNick, mainConfig.netPassword)
         hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
@@ -336,6 +340,9 @@ func main() {
         hcIrc = nil
         regedChatCommands = nil
         regedTimedCommands = nil
+
+        // give all active exentions the chance to clean up
+        ircbotext.ShutdownExtensions(hcIrc)
 
         if !shutdown {
             time.Sleep(time.Duration(10) * time.Second)
