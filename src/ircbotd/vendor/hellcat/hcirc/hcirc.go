@@ -252,6 +252,9 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
             hcIrc.channelUserPart(s, nick)
         }
     }
+    if "MODE" == command {
+        hcIrc.changeUserMode(channel, nick, raw)
+    }
 }
 
 

@@ -109,7 +109,7 @@ func (hcIrc *HcIrc) channelUserPart(channel, nick string) {
 
     uList, exists = hcIrc.channelUsers[channel]
     if exists {
-        delete(uList, strings.ToLower(nick))
+        delete(uList, hcIrc.NormalizeNick(nick))
         hcIrc.channelUsers[channel] = uList
     }
 
@@ -122,6 +122,67 @@ func (hcIrc *HcIrc) channelUserPart(channel, nick string) {
         s := fmt.Sprintf("Updated userlist after PART for channel %s:", channel)
         hcIrc.debugPrint(s, t)
     }
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) changeUserMode(channel, nick, raw string) {
+    var normalUsername string
+    var savedNick string
+    var newNick string
+    var a []string
+    var i int
+    var s string
+    var modeCommand string
+    var uList userlist
+    var exists bool
+
+    a = strings.Split(raw, " ")
+    i = len(a)
+    normalUsername = hcIrc.NormalizeNick(a[i - 1])
+    modeCommand = a[i - 2]
+
+    s = fmt.Sprintf("Got mode change for nick '%s' on channel '%s':", normalUsername, channel)
+    hcIrc.debugPrint(s, modeCommand)
+
+    uList = hcIrc.channelUsers[channel]
+    savedNick, exists = uList[normalUsername]
+    if !exists {
+        hcIrc.debugPrint("Unable to change mode: user not found in channel.", "")
+        return
+    }
+
+    newNick = savedNick
+
+    if "-q" == modeCommand {
+        newNick = strings.Replace(savedNick, "~", "", -1)
+    } else if "+q" == modeCommand {
+        newNick = fmt.Sprintf("~%s", savedNick)
+    } else if "-a" == modeCommand {
+        newNick = strings.Replace(savedNick, "&", "", -1)
+    } else if "+a" == modeCommand {
+        newNick = fmt.Sprintf("&%s", savedNick)
+    } else if "-o" == modeCommand {
+        newNick = strings.Replace(savedNick, "@", "", -1)
+    } else if "+o" == modeCommand {
+        newNick = fmt.Sprintf("@%s", savedNick)
+    } else if "-h" == modeCommand {
+        newNick = strings.Replace(savedNick, "%", "", -1)
+    } else if "+h" == modeCommand {
+        newNick = fmt.Sprintf("%s%s", "%", savedNick)
+    } else if "-v" == modeCommand {
+        newNick = strings.Replace(savedNick, "+", "", -1)
+    } else if "+v" == modeCommand {
+        newNick = fmt.Sprintf("+%s", savedNick)
+    }
+
+    s = fmt.Sprintf("Changed modes: from '%s' to '%s'", savedNick, newNick)
+    hcIrc.debugPrint(s, "")
+    uList[normalUsername] = newNick
+    hcIrc.channelUsers[channel] = uList
+    fmt.Println(hcIrc.channelUsers[channel])
 }
 
 

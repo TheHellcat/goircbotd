@@ -349,6 +349,9 @@ func main() {
         regedTimedCommands = nil
 
         if !shutdown {
+            if cmdArgDebug {
+                fmt.Printf("[MAINDEBUG] waiting 10 seconds for restart/reconnect\n")
+            }
             time.Sleep(time.Duration(10) * time.Second)
         }
 
