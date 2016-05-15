@@ -13,6 +13,7 @@ import
     "hellcat/hcirc"
     "hellcat/hcthreadutils"
     "ircbotd/internal/ircbotint"
+    "ircbotd/internal/ircbotext"
 )
 
 var cmdArgDebug bool
@@ -299,6 +300,9 @@ func main() {
             // start timed commands
             go timedCommandsScheduler()
 
+            // init all configured extensions
+            ircbotext.InitExtensions(hcIrc)
+
             // join all configured auto-join channels
             for _, s = range mainConfig.netChannels {
                 s = fmt.Sprintf("JOIN %s", s)
@@ -330,6 +334,9 @@ func main() {
             }
 
         }
+
+        // give all active exentions the chance to clean up
+        ircbotext.ShutdownExtensions(hcIrc)
 
         hcIrc.Shutdown()
         hcthreadutils.WaitForRoutinesEndById([]string{listenerThreadId, timedcommandsThreadId})
