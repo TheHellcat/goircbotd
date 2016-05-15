@@ -22,7 +22,34 @@ func (hcIrc *HcIrc) conscmdSay(command, params string) string {
 }
 
 func (hcIrc *HcIrc) conscmdChannels(command, params string) string {
-    return ""
+    var s string
+    var out string
+
+    out = ""
+    for _, s = range hcIrc.JoinedChannels {
+        out = fmt.Sprintf( "%s%s\n", out, s )
+    }
+    out = fmt.Sprintf( "Joined channels:\n\n%s", out )
+
+    return out
+}
+
+func (hcIrc *HcIrc) conscmdUsers(command, params string) string {
+    var channel string
+    var users userlist
+    var out string
+    var user string
+
+    out = ""
+    for channel, users = range hcIrc.channelUsers {
+        out = fmt.Sprintf( "%s\n%s:\n", out, channel )
+        for _, user = range users {
+            out = fmt.Sprintf( "%s  %s\n", out, user )
+        }
+    }
+    out = fmt.Sprintf( "Users per channel:\n%s", out )
+
+    return out
 }
 
 func (hcIrc *HcIrc) conscmdJoin(command, params string) string {
@@ -44,4 +71,5 @@ func (hcIrc *HcIrc) RegisterAdditionalConsoleCommands() {
     hcIrc.RegisterConsoleCommand("channels", "Lists all channels the bot is joined into", hcIrc.conscmdChannels)
     hcIrc.RegisterConsoleCommand("join", "Joins a channel", hcIrc.conscmdJoin)
     hcIrc.RegisterConsoleCommand("part", "Parts a channel", hcIrc.conscmdPart)
+    hcIrc.RegisterConsoleCommand("users", "Lists all online users in all joined", hcIrc.conscmdUsers)
 }
