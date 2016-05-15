@@ -16,17 +16,7 @@ import
     "ircbotd/internal/ircbotext"
 )
 
-var cmdArgDebug bool
-var cmdArgDaemon bool
-var cmdArgConsole bool
-var mainCtrl chan string
-var shutdown bool = false
-var running bool = true
-var regedChatCommands map[string]string
-var regedTimedCommands map[string]int
-var hcIrc *hcirc.HcIrc
-var listenerThreadId string
-var timedcommandsThreadId string
+type chatCommandCallback func(string, string, string, string, string, string, string) string
 
 type strMainConfig struct {
     botNick     string
@@ -38,6 +28,19 @@ type strMainConfig struct {
     netPassword string
     netChannels []string
 }
+
+var cmdArgDebug bool
+var cmdArgDaemon bool
+var cmdArgConsole bool
+var mainCtrl chan string
+var shutdown bool = false
+var running bool = true
+var regedChatCommands map[string]string
+var regedChatCommandsInt map[string]chatCommandCallback
+var regedTimedCommands map[string]int
+var hcIrc *hcirc.HcIrc
+var listenerThreadId string
+var timedcommandsThreadId string
 
 var mainConfig strMainConfig
 
@@ -124,6 +127,14 @@ func fetchRegisteredCommands() {
 /**
  *
  */
+func registerInternalChatCommand( command string, function chatCommandCallback ) {
+    regedChatCommandsInt[command] = function
+}
+
+
+/**
+ *
+ */
 func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param string) {
 
     // test only
@@ -155,6 +166,33 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
 /**
  *
  */
+func executeIntChatCommand( command, channel, nick, user, host, cmd, param string ) {
+    var s string
+    var function chatCommandCallback
+    var exists bool
+
+    function, exists = regedChatCommandsInt[cmd]
+fmt.Println( cmd, exists )
+    if exists {
+        s = function(command, channel, nick, user, host, cmd, param)
+        hcIrc.OutboundQueue <- s
+    }
+}
+
+
+// TEST //
+func commandTest(command, channel, nick, user, host, cmd, param string) string {
+    var s string
+
+    s = fmt.Sprintf( "PRIVMSG %s :[%s] %s", channel, nick, param )
+    return s
+}
+// TEST //
+
+
+/**
+ *
+ */
 func processPrivmsg(command, channel, nick, user, host, text string) {
     var isRegedChatCommand bool
     var a []string
@@ -163,16 +201,22 @@ func processPrivmsg(command, channel, nick, user, host, text string) {
 
     a = strings.SplitN(text, " ", 2)
     cmd = a[0]
-    _, isRegedChatCommand = regedChatCommands[cmd]
-    //fmt.Println()
     if len(a) == 2 {
         param = a[1]
     } else {
         param = ""
     }
 
+    _, isRegedChatCommand = regedChatCommands[cmd]
     if isRegedChatCommand {
         go interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param)
+    }
+
+    _, isRegedChatCommand = regedChatCommandsInt[cmd]
+fmt.Println( isRegedChatCommand )
+fmt.Println( regedChatCommandsInt )
+    if isRegedChatCommand {
+        go executeIntChatCommand(command, channel, nick, user, host, cmd, param)
     }
 }
 
@@ -304,6 +348,10 @@ func main() {
 
             // init all configured extensions
             ircbotext.InitExtensions(hcIrc)
+            regedChatCommandsInt = make(map[string]chatCommandCallback)
+            // TEST //
+            registerInternalChatCommand( "!inttest", commandTest )
+            // TEST //
 
             // join all configured auto-join channels
             for _, s = range mainConfig.netChannels {
