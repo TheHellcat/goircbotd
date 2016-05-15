@@ -280,9 +280,6 @@ func main() {
         // fetch registered commands from parent application
         fetchRegisteredCommands()
 
-        // init all configured extensions
-        ircbotext.InitExtensions(hcIrc)
-
         hcIrc = hcirc.New(mainConfig.netHost, mainConfig.netPort, mainConfig.botUsername, mainConfig.botNick, mainConfig.netPassword)
         hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
@@ -302,6 +299,9 @@ func main() {
 
             // start timed commands
             go timedCommandsScheduler()
+
+            // init all configured extensions
+            ircbotext.InitExtensions(hcIrc)
 
             // join all configured auto-join channels
             for _, s = range mainConfig.netChannels {
@@ -335,14 +335,14 @@ func main() {
 
         }
 
+        // give all active exentions the chance to clean up
+        ircbotext.ShutdownExtensions(hcIrc)
+
         hcIrc.Shutdown()
         hcthreadutils.WaitForRoutinesEndById([]string{listenerThreadId, timedcommandsThreadId})
         hcIrc = nil
         regedChatCommands = nil
         regedTimedCommands = nil
-
-        // give all active exentions the chance to clean up
-        ircbotext.ShutdownExtensions(hcIrc)
 
         if !shutdown {
             time.Sleep(time.Duration(10) * time.Second)
