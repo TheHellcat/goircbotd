@@ -113,6 +113,8 @@ func fetchMainConfig() (bool, string) {
                     mainConfig.netPort = itemT
                 } else if( "netChannels" == k ) {
                     mainConfig.netChannels = strings.Split(itemT, " ")
+                } else if( "netPassword" == k ) {
+                    mainConfig.netPassword = strings.Split(itemT, " ")
                 }
             }
         }
