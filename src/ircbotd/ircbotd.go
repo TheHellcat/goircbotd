@@ -19,6 +19,8 @@ import
 var cmdArgDebug bool
 var cmdArgDaemon bool
 var cmdArgConsole bool
+var cmdArgUrl string
+var cmdArgStandalone string
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -27,6 +29,7 @@ var regedTimedCommands map[string]int
 var hcIrc *hcirc.HcIrc
 var listenerThreadId string
 var timedcommandsThreadId string
+var runningStandalone bool
 
 type strMainConfig struct {
     botNick     string
@@ -45,20 +48,77 @@ func init() {
     flag.BoolVar(&cmdArgDebug, "debug", false, "Enable debug-mode")
     flag.BoolVar(&cmdArgDaemon, "D", false, "Daemonize (launch into background)")
     flag.BoolVar(&cmdArgConsole, "c", false, "Enable console (can not be used with -D)")
+    flag.StringVar(&cmdArgUrl, "base", "", "Base URL for accessing parent application")
+    flag.StringVar(&cmdArgStandalone, "standalone", "", "Enable stand-alone mode and load main config from given file")
 }
 
 
 /**
  *
  */
-func fetchMainConfig() {
-    // TODO: actually fetch this from the PHP side interface API
-    mainConfig.botNick = "BotTest"
-    mainConfig.botUsername = "Testbot"
-    mainConfig.botRealname = "Testus Bottus"
-    mainConfig.netHost = "irc-node1.hellcat.net"
-    mainConfig.netPort = "6667"
-    mainConfig.netChannels = []string{"#test"}
+func fetchMainConfig() (bool, string) {
+    var ok bool
+    var notok string
+    var err error
+    var rJson string
+    var jMap interface{}
+    var jMapA map[string]interface{}
+    var jsonDecoder *json.Decoder
+
+    ok = false
+    notok = "unknown reason (this really should not happen, but it just did)"
+
+    runningStandalone = false
+        if len(cmdArgStandalone) > 0 {
+            runningStandalone = true
+        }
+
+    if runningStandalone {
+        // TODO: load config from file
+    } else {
+            if len(cmdArgUrl) > 10 {
+                ircbotint.SetHttpUrl( cmdArgUrl )
+                rJson, err = ircbotint.CallHttp( "getmainconfig", "" )
+                if err == nil {
+                    ok = true
+                } else {
+                    notok = fmt.Sprintf( "Failed to fetch config: %s", err.Error() )
+                }
+            } else {
+                notok = "No or incomplete base URL specified"
+            }
+    }
+
+    if !ok {
+        fmt.Printf( "(!) ERROR loading config: %s\n", notok )
+    }
+
+    // parse JSON response into config vars
+    jsonDecoder = json.NewDecoder(strings.NewReader(rJson))
+    err = jsonDecoder.Decode(&jMap)
+    if err == nil {
+        jMapA = jMap.(map[string]interface{})
+        for k, v := range jMapA {
+            switch itemT := v.(type) {
+            case string:
+                if( "botNick" == k ) {
+                    mainConfig.botNick = itemT
+                } else if( "botUsername" == k ) {
+                    mainConfig.botUsername = itemT
+                } else if( "botRealname" == k ) {
+                    mainConfig.botRealname = itemT
+                } else if( "netHost" == k ) {
+                    mainConfig.netHost = itemT
+                } else if( "netPort" == k ) {
+                    mainConfig.netPort = itemT
+                } else if( "netChannels" == k ) {
+                    mainConfig.netChannels = strings.Split(itemT, " ")
+                }
+            }
+        }
+    }
+
+    return ok, notok
 }
 
 
@@ -81,7 +141,11 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson = "{\"chatcommands\":[    {\"command\":\"!test1\"},    {\"command\":\"!test2\"},    {\"command\":\"!test3\"},    {\"command\":\"!test4\"},    {\"command\":\"!test5\"}],\"timedcommands\":[    {\"command\":\"-timertest1\", \"timer\":\"30\"},    {\"command\":\"-timertest2\", \"timer\":\"10\"},    {\"command\":\"-timertest3\", \"timer\":\"60\"}]}"
+    sJson, err = ircbotint.CallHttp( "getchatcommands", "" )
+    if err != nil {
+        fmt.Printf( "(!) ERROR fetching chat commands: %s\n", err.Error() )
+        return
+    }
 
     jsonDecoder = json.NewDecoder(strings.NewReader(sJson))
 
@@ -232,6 +296,7 @@ func main() {
     var err error
     var mainRunning bool
     var s string
+    var b bool
 
     flag.Parse()
 
@@ -275,7 +340,10 @@ func main() {
         // regedConsoleCommands = make(map[string]string)
 
         // fetch main configuration from parent application
-        fetchMainConfig()
+        b, s = fetchMainConfig()
+        if !b {
+            return
+        }
 
         // fetch registered commands from parent application
         fetchRegisteredCommands()
