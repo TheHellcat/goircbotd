@@ -261,6 +261,8 @@ func main() {
     // set up main control channel for communication from all worker-threads
     mainCtrl = make(chan string, 1)
 
+    ircbotint.TestWs()
+
     for !shutdown {
 
         // flag to keep all worker threads running or tell them to exit
