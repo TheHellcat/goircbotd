@@ -190,6 +190,8 @@ func serverListener(hcIrc *hcirc.HcIrc) {
         fmt.Printf("[LISTENERDEBUG] server listener thread started, ID=%s\n", listenerThreadId)
     }
 
+    hcIrc.AutohandleSysMsgs = false
+
     for running {
         s = <-hcIrc.InboundQueue
 
@@ -199,6 +201,7 @@ func serverListener(hcIrc *hcirc.HcIrc) {
         } else {
             // all's good, process the message
             command, channel, nick, user, host, text = hcIrc.ParseMessage(s)
+            hcIrc.HandleSystemMessages(command, channel, nick, user, host, text, s)
 
             if "PRIVMSG" == command {
                 processPrivmsg(command, channel, nick, user, host, text)
