@@ -47,10 +47,15 @@ type HcIrc struct {
     Error                string
 }
 
+
+var srvMsgHooks map[string]chan string
+
 func init() {
     consoleRegisteredCommands = make(map[string]consoleCommandCallback)
     consoleRegisteredCommandInfos = make(map[string]string)
+    srvMsgHooks = make(map[string]chan string)
 }
+
 
 func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcIrc *HcIrc) {
     return &HcIrc{
@@ -103,9 +108,18 @@ func (hcIrc *HcIrc) debugPrint(s1, s2 string) {
 /**
  *
  */
+func (hcIrc *HcIrc) RegisterServerMessageHook( uid string, msgChannel chan string ) {
+    srvMsgHooks[uid] = msgChannel
+}
+
+
+/**
+ *
+ */
 func (hcIrc *HcIrc) WaitForServerMessage() string {
     var s string
     var err error
+    var msgChan chan string
 
     s, err = hcIrc.reader.ReadString('\n')
     if err != nil {
@@ -117,6 +131,11 @@ func (hcIrc *HcIrc) WaitForServerMessage() string {
     s = strings.Replace(s, string('\n'), "", -1)
     s = strings.Replace(s, string('\r'), "", -1)
     hcIrc.debugPrint("from server >>>", s)
+
+    // send raw message to all registered receivers
+    for _, msgChan = range srvMsgHooks {
+        msgChan <- s
+    }
 
     return s
 }
