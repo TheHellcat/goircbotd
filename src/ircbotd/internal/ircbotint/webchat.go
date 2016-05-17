@@ -14,7 +14,11 @@ var wsUpgrader = websocket.Upgrader{
 
 
 func checkOrigin( r *http.Request ) bool {
-    return true
+    if "http://live.hellcat.net" == r.Header.Get("Origin") {
+        return true
+    } else {
+        return false
+    }
 }
 
 
