@@ -77,13 +77,14 @@ func clientReceiver( conn *websocket.Conn, inChan chan string ) {
  */
 func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     var s string
-    var msgChan chan string
+    var msgChan chan hcirc.ServerMessage
     var inChan chan string
     var conn *websocket.Conn
     var err error
     var running bool
     var command, channel, nick, text string
     var myId string
+    var srvMsg hcirc.ServerMessage
 
     running = true
     myId = request.RemoteAddr
@@ -93,7 +94,7 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     }
 
     // setup new channel to receive IRC server messages
-    msgChan = make(chan string, wsHcIrc.QueueSize)
+    msgChan = make(chan hcirc.ServerMessage, wsHcIrc.QueueSize)
     // we need a unique ID for registering our channel
     s = fmt.Sprintf( "webchat-%s-%d", request.RemoteAddr, time.Now().Unix() )
     wsHcIrc.RegisterServerMessageHook( s, msgChan )
@@ -125,8 +126,11 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
             if "QUIT" == s {
                 running = false
             }
-        case s = <-msgChan:
-            command, channel, nick, _, _, text = wsHcIrc.ParseMessage(s)  // TODO: optimize this to not have every handler call Parse() for the same message
+        case srvMsg = <-msgChan:
+            command = srvMsg.Command
+            channel = srvMsg.Channel
+            nick = srvMsg.Nick
+            text = srvMsg.Text
             if "PRIVMSG" == command {
                 s = fmt.Sprintf( "[%s] %s: %s", channel, nick, text )
                 err = conn.WriteMessage(websocket.TextMessage, []byte(s))
