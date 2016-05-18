@@ -6,6 +6,8 @@ import (
     "fmt"
     "hellcat/hcirc"
     "time"
+    "encoding/json"
+    "strings"
 )
 
 
@@ -24,14 +26,14 @@ func webchatClientReceiver( conn *websocket.Conn, inChan chan string ) {
     running = true
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSDEBUG] Receiver thread started\n" )
+        fmt.Printf( "[WSCHATDEBUG] Receiver thread started\n" )
     }
 
     for running {
         mt, ba, err = conn.ReadMessage()
         if err != nil {
             if wsHcIrc.Debugmode {
-                fmt.Printf( "[WSDEBUG] Feiled to read from connection: %s\n", err.Error() )
+                fmt.Printf( "[WSCHATDEBUG] Feiled to read from connection: %s\n", err.Error() )
             }
             inChan <- "QUIT"
             running = false
@@ -44,7 +46,7 @@ func webchatClientReceiver( conn *websocket.Conn, inChan chan string ) {
     }
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSDEBUG] Receiver thread ended\n" )
+        fmt.Printf( "[WSCHATDEBUG] Receiver thread ended\n" )
     }
 }
 
@@ -64,12 +66,21 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     var command, channel, nick, text string
     var myId string
     var srvMsg hcirc.ServerMessage
+    var clientMsg map[string]string
+    var clmsgid int
+    var ba []byte
+    var joinedChannels map[string]string
+    var exists bool
+    var a []string
 
     running = true
+    clmsgid = 0
     myId = request.RemoteAddr
+    clientMsg = make(map[string]string)
+    joinedChannels = make(map[string]string)
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSDEBUG] New connection handler spawned: %s\n", myId )
+        fmt.Printf( "[WSCHATDEBUG] New connection handler spawned: %s\n", myId )
     }
 
     // setup new channel to receive IRC server messages
@@ -78,7 +89,7 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     s = fmt.Sprintf( "webchat-%s-%d", request.RemoteAddr, time.Now().Unix() )
     wsHcIrc.RegisterServerMessageHook( s, msgChan )
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSDEBUG] Registered server-messages channel with ID %s\n", s )
+        fmt.Printf( "[WSCHATDEBUG] Registered server-messages channel with ID %s\n", s )
     }
 
     // set up channel for receiving messages from webchat client
@@ -88,7 +99,7 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     conn, err = wsUpgrader.Upgrade(writer, request, nil)
     if err != nil {
         if wsHcIrc.Debugmode {
-            fmt.Printf( "[WSDEBUG] Upgrading HTTP to WEBSOCKETS feiled: %s\n", err.Error() )
+            fmt.Printf( "[WSCHATDEBUG] Upgrading HTTP to WEBSOCKETS feiled: %s\n", err.Error() )
         }
         return
     }
@@ -102,25 +113,59 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     for running {
         select {
         case s = <-inChan:
-            if "QUIT" == s {
+            a = strings.Split( s, " " )
+            if "JOIN" == a[0] {
+                joinedChannels[a[1]] = a[1]
+                if wsHcIrc.Debugmode {
+                    fmt.Printf( "[WSCHATDEBUG] %s subscribed to channel %s\n", myId, a[1] )
+                }
+            }
+            if "PART" == a[0] {
+                delete( joinedChannels, a[1] )
+                if wsHcIrc.Debugmode {
+                    fmt.Printf( "[WSCHATDEBUG] %s unsubscribed to channel %s\n", myId, a[1] )
+                }
+            }
+            if "QUIT" == a[0] {
                 running = false
             }
+
         case srvMsg = <-msgChan:
             command = srvMsg.Command
             channel = srvMsg.Channel
             nick = srvMsg.Nick
             text = srvMsg.Text
             if "PRIVMSG" == command {
-                s = fmt.Sprintf( "[%s] %s: %s", channel, nick, text )
-                err = conn.WriteMessage(websocket.TextMessage, []byte(s))
-                if err != nil {
-                    // TODO: Handle error
+                _, exists = joinedChannels[channel]
+                if exists {
+                    clmsgid += 1
+                    if clmsgid > 268435455 {
+                        // some cheap in32 kaboom protection by intentionally rolling over
+                        // this way there is a clearly defines behaviour when we come close to the limit
+                        // and no, I don't wanna use an in64 - it's also not really required here.
+                        clmsgid = 1
+                    }
+                    clientMsg["type"] = "chatmessage"
+                    clientMsg["id"] = fmt.Sprintf("msg%d", clmsgid)
+                    clientMsg["cssClass"] = "chatmessage"
+                    clientMsg["nick"] = nick
+                    clientMsg["text"] = text
+                    ba, err = json.Marshal(clientMsg)
+                    if err != nil {
+                        if wsHcIrc.Debugmode {
+                            fmt.Printf("[WSCHATDEBUG] ERROR encoding JSON for client: %s\n", err.Error())
+                        }
+                    }
+                    err = conn.WriteMessage(websocket.TextMessage, ba)
+                    if err != nil {
+                        // TODO: Handle error
+                    }
                 }
             }
         }
     }
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSDEBUG] Connection handler terminated: %s\n", myId )
+        fmt.Printf( "[WSCHATDEBUG] Connection handler terminated: %s\n", myId )
     }
 }

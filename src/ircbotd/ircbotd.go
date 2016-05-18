@@ -293,7 +293,8 @@ func main() {
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
 
-            // start webserver / websockets listener, if requested
+            // register webserver / websockets listener console commands and start the listener, if requested
+            ircbotint.RegisterWebsocketConsoleCommands()
             if cmdArgWebsocketEnabled {
                 go ircbotint.EnableWebsocketServer(hcIrc, cmdArgWebsocketBind)
             }
