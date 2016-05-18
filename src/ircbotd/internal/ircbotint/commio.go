@@ -13,9 +13,9 @@ var httpUrl string
 /**
  *
  */
-func SetHttpUrl( url string ) {
-    url = strings.Trim( url, "/" )
-    url = fmt.Sprintf( "%s/", url )
+func SetHttpUrl(url string) {
+    url = strings.Trim(url, "/")
+    url = fmt.Sprintf("%s/", url)
     httpUrl = url
 }
 
@@ -23,24 +23,24 @@ func SetHttpUrl( url string ) {
 /**
  *
  */
-func CallHttp( param1, param2 string ) (string, error) {
+func CallHttp(param1, param2 string) (string, error) {
     var r *http.Response
     var err error
     var s string
     var ba []byte
 
-    if len(param2)>0 {
+    if len(param2) > 0 {
         s = fmt.Sprintf("%s/%s/%s", httpUrl, param1, param2)
     } else {
         s = fmt.Sprintf("%s/%s", httpUrl, param1)
     }
 
-    r, err = http.Get( s )
+    r, err = http.Get(s)
     if err != nil {
         return "", err
     }
 
-    ba, err = ioutil.ReadAll( r.Body )
+    ba, err = ioutil.ReadAll(r.Body)
     r.Body.Close()
 
     if err != nil {

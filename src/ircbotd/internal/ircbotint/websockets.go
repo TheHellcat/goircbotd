@@ -8,7 +8,6 @@ import (
     "net"
 )
 
-
 type tcpKeepAliveListener struct {
     *net.TCPListener
 }
@@ -30,9 +29,9 @@ var wsHcIrc *hcirc.HcIrc
 func EnableWebsocketServer(hcIrc *hcirc.HcIrc, binding string) {
     wsHcIrc = hcIrc
     http.HandleFunc("/webchat", webchatHandler)
-    fmt.Printf( "(i) starting HTTP/Websockets listener\n" )
+    fmt.Printf("(i) starting HTTP/Websockets listener\n")
     listenAndServe(binding, nil)
-    fmt.Printf( "(i) HTTP/Websockets terminated\n" )
+    fmt.Printf("(i) HTTP/Websockets terminated\n")
     wsListener = nil
 }
 
@@ -53,22 +52,22 @@ func DisableWebsocketServer() {
  * from the console
  */
 func RegisterWebsocketConsoleCommands() {
-    wsHcIrc.RegisterConsoleCommand( "ws-enable", "Enable http/websocket listener", consEnableWs )
-    wsHcIrc.RegisterConsoleCommand( "ws-disable", "Disable http/websocket listener", consDisableWs )
+    wsHcIrc.RegisterConsoleCommand("ws-enable", "Enable http/websocket listener", consEnableWs)
+    wsHcIrc.RegisterConsoleCommand("ws-disable", "Disable http/websocket listener", consDisableWs)
 }
 
 
 /**
  * Function for console command to start/enable the http/ws listener
  */
-func consEnableWs( cmd, param string ) string {
+func consEnableWs(cmd, param string) string {
     var r string
 
     if len(param) < 10 {
         r = "You must provide a proper binding to listing on,\n e.g. 0.0.0.0:8000, 127.0.0.1:8000, 192.168.123.45:1234 or similar.\n"
     } else {
-        go EnableWebsocketServer( hcirc.Self, param )
-        r = fmt.Sprintf( "Enabling http/ws listener on %s\n", param )
+        go EnableWebsocketServer(hcirc.Self, param)
+        r = fmt.Sprintf("Enabling http/ws listener on %s\n", param)
     }
 
     return r
@@ -78,7 +77,7 @@ func consEnableWs( cmd, param string ) string {
 /**
  * Function for console command to stop/disable the http/ws listener
  */
-func consDisableWs( cmd, param string ) string {
+func consDisableWs(cmd, param string) string {
     DisableWebsocketServer()
     return "Shutting down http/ws listener\n"
 }
@@ -92,7 +91,7 @@ func consDisableWs( cmd, param string ) string {
  * own needs, esp. the ability to shut down the listener (the original http.ListenAndServe,
  * once running, knows no return)
  */
-func listenAndServe( addr string, handler http.Handler) {
+func listenAndServe(addr string, handler http.Handler) {
     var err error
     var srv *http.Server
 
@@ -102,12 +101,12 @@ func listenAndServe( addr string, handler http.Handler) {
     }
     wsListener, err = net.Listen("tcp", addr)
     if err != nil {
-        fmt.Printf( "(!) Failed to open listener: %s\n", err.Error() )
+        fmt.Printf("(!) Failed to open listener: %s\n", err.Error())
         return
     }
     err = srv.Serve(tcpKeepAliveListener{wsListener.(*net.TCPListener)})
     if err != nil {
-        fmt.Printf( "(!) Error during listening: %s\n", err.Error() )
+        fmt.Printf("(!) Error during listening: %s\n", err.Error())
     }
 }
 
@@ -115,10 +114,10 @@ func listenAndServe( addr string, handler http.Handler) {
 /**
  * check the origin of the request if we want to allow the connection or not
  */
-func checkOrigin( r *http.Request ) bool {
+func checkOrigin(r *http.Request) bool {
     // TODO: make this configurable - but in an EASY and SENSIBLE way!
     //if "http://live.hellcat.net" == r.Header.Get("Origin") {
-        return true
+    return true
     //} else {
     //    return false
     //}

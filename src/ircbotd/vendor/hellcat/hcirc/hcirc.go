@@ -57,7 +57,6 @@ type HcIrc struct {
     Error                string
 }
 
-
 var srvMsgHooks map[string]chan ServerMessage
 var Self *HcIrc
 
@@ -130,7 +129,7 @@ func (hcIrc *HcIrc) debugPrint(s1, s2 string) {
 /**
  *
  */
-func (hcIrc *HcIrc) RegisterServerMessageHook( uid string, msgChannel chan ServerMessage ) {
+func (hcIrc *HcIrc) RegisterServerMessageHook(uid string, msgChannel chan ServerMessage) {
     srvMsgHooks[uid] = msgChannel
 }
 

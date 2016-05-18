@@ -27,9 +27,9 @@ func (hcIrc *HcIrc) conscmdChannels(command, params string) string {
 
     out = ""
     for _, s = range hcIrc.JoinedChannels {
-        out = fmt.Sprintf( "%s%s\n", out, s )
+        out = fmt.Sprintf("%s%s\n", out, s)
     }
-    out = fmt.Sprintf( "Joined channels:\n\n%s", out )
+    out = fmt.Sprintf("Joined channels:\n\n%s", out)
 
     return out
 }
@@ -42,12 +42,12 @@ func (hcIrc *HcIrc) conscmdUsers(command, params string) string {
 
     out = ""
     for channel, users = range hcIrc.channelUsers {
-        out = fmt.Sprintf( "%s\n%s:\n", out, channel )
+        out = fmt.Sprintf("%s\n%s:\n", out, channel)
         for _, user = range users {
-            out = fmt.Sprintf( "%s  %s\n", out, user )
+            out = fmt.Sprintf("%s  %s\n", out, user)
         }
     }
-    out = fmt.Sprintf( "Users per channel:\n%s", out )
+    out = fmt.Sprintf("Users per channel:\n%s", out)
 
     return out
 }

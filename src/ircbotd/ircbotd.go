@@ -73,28 +73,28 @@ func fetchMainConfig() (bool, string) {
     notok = "unknown reason (this really should not happen, but it just did)"
 
     runningStandalone = false
-        if len(cmdArgStandalone) > 0 {
-            runningStandalone = true
-        }
+    if len(cmdArgStandalone) > 0 {
+        runningStandalone = true
+    }
 
     if runningStandalone {
         // TODO: load config from file
     } else {
-            if len(cmdArgUrl) > 10 {
-                ircbotint.SetHttpUrl( cmdArgUrl )
-                rJson, err = ircbotint.CallHttp( "getmainconfig", "" )
-                if err == nil {
-                    ok = true
-                } else {
-                    notok = fmt.Sprintf( "Failed to fetch config: %s", err.Error() )
-                }
+        if len(cmdArgUrl) > 10 {
+            ircbotint.SetHttpUrl(cmdArgUrl)
+            rJson, err = ircbotint.CallHttp("getmainconfig", "")
+            if err == nil {
+                ok = true
             } else {
-                notok = "No or incomplete base URL specified"
+                notok = fmt.Sprintf("Failed to fetch config: %s", err.Error())
             }
+        } else {
+            notok = "No or incomplete base URL specified"
+        }
     }
 
     if !ok {
-        fmt.Printf( "(!) ERROR loading config: %s\n", notok )
+        fmt.Printf("(!) ERROR loading config: %s\n", notok)
     }
 
     // parse JSON response into config vars
@@ -105,20 +105,20 @@ func fetchMainConfig() (bool, string) {
         for k, v := range jMapA {
             switch itemT := v.(type) {
             case string:
-                if( "botNick" == k ) {
+                if ( "botNick" == k ) {
                     mainConfig.botNick = itemT
-                } else if( "botUsername" == k ) {
+                } else if ( "botUsername" == k ) {
                     mainConfig.botUsername = itemT
-                } else if( "botRealname" == k ) {
+                } else if ( "botRealname" == k ) {
                     mainConfig.botRealname = itemT
-                } else if( "netHost" == k ) {
+                } else if ( "netHost" == k ) {
                     mainConfig.netHost = itemT
-                } else if( "netPort" == k ) {
+                } else if ( "netPort" == k ) {
                     mainConfig.netPort = itemT
-                } else if( "netChannels" == k ) {
+                } else if ( "netChannels" == k ) {
                     mainConfig.netChannels = strings.Split(itemT, " ")
-                } else if( "netPassword" == k ) {
-                    mainConfig.netPassword = strings.Split(itemT, " ")
+                } else if ( "netPassword" == k ) {
+                    mainConfig.netPassword = itemT
                 }
             }
         }
@@ -147,9 +147,9 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson, err = ircbotint.CallHttp( "getchatcommands", "" )
+    sJson, err = ircbotint.CallHttp("getchatcommands", "")
     if err != nil {
-        fmt.Printf( "(!) ERROR fetching chat commands: %s\n", err.Error() )
+        fmt.Printf("(!) ERROR fetching chat commands: %s\n", err.Error())
         return
     }
 

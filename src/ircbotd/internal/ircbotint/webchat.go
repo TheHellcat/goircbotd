@@ -16,7 +16,7 @@ import (
  *
  * waits for messages being sent from the webclient and sends them to the request handler
  */
-func webchatClientReceiver( conn *websocket.Conn, inChan chan string ) {
+func webchatClientReceiver(conn *websocket.Conn, inChan chan string) {
     var mt int
     var ba []byte
     var message string
@@ -26,14 +26,14 @@ func webchatClientReceiver( conn *websocket.Conn, inChan chan string ) {
     running = true
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSCHATDEBUG] Receiver thread started\n" )
+        fmt.Printf("[WSCHATDEBUG] Receiver thread started\n")
     }
 
     for running {
         mt, ba, err = conn.ReadMessage()
         if err != nil {
             if wsHcIrc.Debugmode {
-                fmt.Printf( "[WSCHATDEBUG] Feiled to read from connection: %s\n", err.Error() )
+                fmt.Printf("[WSCHATDEBUG] Feiled to read from connection: %s\n", err.Error())
             }
             inChan <- "QUIT"
             running = false
@@ -46,7 +46,7 @@ func webchatClientReceiver( conn *websocket.Conn, inChan chan string ) {
     }
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSCHATDEBUG] Receiver thread ended\n" )
+        fmt.Printf("[WSCHATDEBUG] Receiver thread ended\n")
     }
 }
 
@@ -56,7 +56,7 @@ func webchatClientReceiver( conn *websocket.Conn, inChan chan string ) {
  *
  * handles the HTTP request, upgrade to WEBSOCKET and communication between bot and webclient
  */
-func webchatHandler (writer http.ResponseWriter, request *http.Request) {
+func webchatHandler(writer http.ResponseWriter, request *http.Request) {
     var s string
     var msgChan chan hcirc.ServerMessage
     var inChan chan string
@@ -80,16 +80,16 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     joinedChannels = make(map[string]string)
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSCHATDEBUG] New connection handler spawned: %s\n", myId )
+        fmt.Printf("[WSCHATDEBUG] New connection handler spawned: %s\n", myId)
     }
 
     // setup new channel to receive IRC server messages
     msgChan = make(chan hcirc.ServerMessage, wsHcIrc.QueueSize)
     // we need a unique ID for registering our channel
-    s = fmt.Sprintf( "webchat-%s-%d", request.RemoteAddr, time.Now().Unix() )
-    wsHcIrc.RegisterServerMessageHook( s, msgChan )
+    s = fmt.Sprintf("webchat-%s-%d", request.RemoteAddr, time.Now().Unix())
+    wsHcIrc.RegisterServerMessageHook(s, msgChan)
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSCHATDEBUG] Registered server-messages channel with ID %s\n", s )
+        fmt.Printf("[WSCHATDEBUG] Registered server-messages channel with ID %s\n", s)
     }
 
     // set up channel for receiving messages from webchat client
@@ -99,7 +99,7 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     conn, err = wsUpgrader.Upgrade(writer, request, nil)
     if err != nil {
         if wsHcIrc.Debugmode {
-            fmt.Printf( "[WSCHATDEBUG] Upgrading HTTP to WEBSOCKETS feiled: %s\n", err.Error() )
+            fmt.Printf("[WSCHATDEBUG] Upgrading HTTP to WEBSOCKETS feiled: %s\n", err.Error())
         }
         return
     }
@@ -113,17 +113,17 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     for running {
         select {
         case s = <-inChan:
-            a = strings.Split( s, " " )
+            a = strings.Split(s, " ")
             if "JOIN" == a[0] {
                 joinedChannels[a[1]] = a[1]
                 if wsHcIrc.Debugmode {
-                    fmt.Printf( "[WSCHATDEBUG] %s subscribed to channel %s\n", myId, a[1] )
+                    fmt.Printf("[WSCHATDEBUG] %s subscribed to channel %s\n", myId, a[1])
                 }
             }
             if "PART" == a[0] {
-                delete( joinedChannels, a[1] )
+                delete(joinedChannels, a[1])
                 if wsHcIrc.Debugmode {
-                    fmt.Printf( "[WSCHATDEBUG] %s unsubscribed to channel %s\n", myId, a[1] )
+                    fmt.Printf("[WSCHATDEBUG] %s unsubscribed to channel %s\n", myId, a[1])
                 }
             }
             if "QUIT" == a[0] {
@@ -166,6 +166,6 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     }
 
     if wsHcIrc.Debugmode {
-        fmt.Printf( "[WSCHATDEBUG] Connection handler terminated: %s\n", myId )
+        fmt.Printf("[WSCHATDEBUG] Connection handler terminated: %s\n", myId)
     }
 }
