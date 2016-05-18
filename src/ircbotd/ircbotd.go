@@ -32,6 +32,8 @@ var cmdArgDaemon bool
 var cmdArgConsole bool
 var cmdArgUrl string
 var cmdArgStandalone string
+var cmdArgWebsocketBind string
+var cmdArgWebsocketEnabled bool
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -50,6 +52,8 @@ func init() {
     flag.BoolVar(&cmdArgConsole, "c", false, "Enable console (can not be used with -D)")
     flag.StringVar(&cmdArgUrl, "base", "", "Base URL for accessing parent application")
     flag.StringVar(&cmdArgStandalone, "standalone", "", "Enable stand-alone mode and load main config from given file")
+    flag.BoolVar(&cmdArgWebsocketEnabled, "ws", false, "Enable listening for incomming http/websocket connections")
+    flag.StringVar(&cmdArgWebsocketBind, "wsbind", "0.0.0.0:8088", "Listen binding for incomming http/websocket connections (defaults to 0.0.0.0:8088)")
 }
 
 
@@ -257,6 +261,8 @@ func serverListener(hcIrc *hcirc.HcIrc) {
         fmt.Printf("[LISTENERDEBUG] server listener thread started, ID=%s\n", listenerThreadId)
     }
 
+    hcIrc.AutohandleSysMsgs = false
+
     for running {
         s = <-hcIrc.InboundQueue
 
@@ -266,6 +272,7 @@ func serverListener(hcIrc *hcirc.HcIrc) {
         } else {
             // all's good, process the message
             command, channel, nick, user, host, text = hcIrc.ParseMessage(s)
+            hcIrc.HandleSystemMessages(command, channel, nick, user, host, text, s)
 
             if "PRIVMSG" == command {
                 processPrivmsg(command, channel, nick, user, host, text)
@@ -356,6 +363,12 @@ func main() {
         hcIrc.Debugmode = cmdArgDebug
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
+
+            // register webserver / websockets listener console commands and start the listener, if requested
+            ircbotint.RegisterWebsocketConsoleCommands()
+            if cmdArgWebsocketEnabled {
+                go ircbotint.EnableWebsocketServer(hcIrc, cmdArgWebsocketBind)
+            }
 
             fmt.Printf("(i) Connected to %s:%s\n", mainConfig.netHost, mainConfig.netPort)
 

@@ -16,6 +16,16 @@ type userinfo struct {
     NickNormalizedName string
 }
 
+type ServerMessage struct {
+    Command string
+    Channel string
+    Nick    string
+    User    string
+    Host    string
+    Text    string
+    Raw     string
+}
+
 type HcIrc struct {
     host                 string
     port                 string
@@ -47,13 +57,29 @@ type HcIrc struct {
     Error                string
 }
 
+
+var srvMsgHooks map[string]chan ServerMessage
+var Self *HcIrc
+
+
+/**
+ * Internal init function, sets up magic internal stuff w/o which we couldn't work
+ */
 func init() {
     consoleRegisteredCommands = make(map[string]ConsoleCommandCallback)
     consoleRegisteredCommandInfos = make(map[string]string)
+    srvMsgHooks = make(map[string]chan ServerMessage)
 }
 
+
+/**
+ * Setup a new, usable instance of the IRC module.
+ *
+ * This call creates an instance of HcIrc, sets up all initial runtime values and returns the instance,
+ * ready to IRC away.
+ */
 func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcIrc *HcIrc) {
-    return &HcIrc{
+    Self = &HcIrc{
         host: serverHost,
         port: serverPort,
         user: serverUser,
@@ -74,6 +100,7 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         threadIds: make(map[string]string),
         JoinedChannels: make(map[string]string),
     }
+    return Self
 }
 
 
@@ -97,6 +124,14 @@ func (hcIrc *HcIrc) debugPrint(s1, s2 string) {
         s = strings.Replace(s, string('\r'), "", -1)
         fmt.Printf("%s\n", s)
     }
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) RegisterServerMessageHook( uid string, msgChannel chan ServerMessage ) {
+    srvMsgHooks[uid] = msgChannel
 }
 
 
@@ -132,6 +167,8 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
     var s string
     var i int
     var source string
+    var msgChan chan ServerMessage
+    var srvMsg ServerMessage
 
     text = ""
     command = ""
@@ -198,6 +235,19 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
     if hcIrc.AutohandleSysMsgs {
         hcIrc.HandleSystemMessages(command, channel, nick, user, host, text, message)
     }
+
+    // send raw message to all registered receivers
+    for _, msgChan = range srvMsgHooks {
+        srvMsg.Command = command
+        srvMsg.Channel = channel
+        srvMsg.Nick = nick
+        srvMsg.User = user
+        srvMsg.Host = host
+        srvMsg.Text = text
+        srvMsg.Raw = message
+        msgChan <- srvMsg
+    }
+
     return command, channel, nick, user, host, text
 
 }
