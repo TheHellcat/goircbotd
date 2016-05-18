@@ -89,7 +89,7 @@ func fetchMainConfig() (bool, string) {
                 notok = fmt.Sprintf("Failed to fetch config: %s", err.Error())
             }
         } else {
-            notok = "No or incomplete base URL specified"
+            notok = "No or incomplete base URL specified\n    Use --base=<URL> or --standalone=<PATH> to supply config location"
         }
     }
 
@@ -428,6 +428,9 @@ func main() {
 
         // give all active exentions the chance to clean up
         ircbotext.ShutdownExtensions(hcIrc)
+
+        // shut down http/ws listener
+        ircbotint.DisableWebsocketServer()
 
         hcIrc.Shutdown()
         hcthreadutils.WaitForRoutinesEndById([]string{listenerThreadId, timedcommandsThreadId})
