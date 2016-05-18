@@ -48,7 +48,7 @@ type HcIrc struct {
 }
 
 func init() {
-    consoleRegisteredCommands = make(map[string]consoleCommandCallback)
+    consoleRegisteredCommands = make(map[string]ConsoleCommandCallback)
     consoleRegisteredCommandInfos = make(map[string]string)
 }
 

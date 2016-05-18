@@ -7,16 +7,16 @@ import (
     "io"
 )
 
-type consoleCommandCallback func(string, string) string
+type ConsoleCommandCallback func(string, string) string
 
-var consoleRegisteredCommands map[string]consoleCommandCallback
+var consoleRegisteredCommands map[string]ConsoleCommandCallback
 var consoleRegisteredCommandInfos map[string]string
 
 
 /**
  *
  */
-func (hcIrc *HcIrc) RegisterConsoleCommand(command string, description string, function consoleCommandCallback) {
+func (hcIrc *HcIrc) RegisterConsoleCommand(command string, description string, function ConsoleCommandCallback) {
     command = strings.ToLower(command)
     consoleRegisteredCommands[command] = function
     consoleRegisteredCommandInfos[command] = description
@@ -35,7 +35,7 @@ func (hcIrc *HcIrc) StartConsole(ctrlChan chan string, ioRead io.Reader, ioWrite
     var consoleRunning bool
     var output string
     var exists bool
-    var function consoleCommandCallback
+    var function ConsoleCommandCallback
     var a []string
     var s string
     var t string

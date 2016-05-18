@@ -16,6 +16,17 @@ import
     "ircbotd/internal/ircbotext"
 )
 
+type strMainConfig struct {
+    botNick     string
+    botUsername string
+    botRealname string
+
+    netHost     string
+    netPort     string
+    netPassword string
+    netChannels []string
+}
+
 var cmdArgDebug bool
 var cmdArgDaemon bool
 var cmdArgConsole bool
@@ -27,17 +38,6 @@ var regedTimedCommands map[string]int
 var hcIrc *hcirc.HcIrc
 var listenerThreadId string
 var timedcommandsThreadId string
-
-type strMainConfig struct {
-    botNick     string
-    botUsername string
-    botRealname string
-
-    netHost     string
-    netPort     string
-    netPassword string
-    netChannels []string
-}
 
 var mainConfig strMainConfig
 
@@ -163,17 +163,18 @@ func processPrivmsg(command, channel, nick, user, host, text string) {
 
     a = strings.SplitN(text, " ", 2)
     cmd = a[0]
-    _, isRegedChatCommand = regedChatCommands[cmd]
-    //fmt.Println()
     if len(a) == 2 {
         param = a[1]
     } else {
         param = ""
     }
 
+    _, isRegedChatCommand = regedChatCommands[cmd]
     if isRegedChatCommand {
         go interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param)
     }
+
+    ircbotint.HandleCommand(command, channel, nick, user, host, cmd, param)
 }
 
 
@@ -301,6 +302,9 @@ func main() {
 
             // start timed commands
             go timedCommandsScheduler()
+
+            // init handler for internal chat commands
+            ircbotint.InitChatcmdHan(hcIrc)
 
             // init all configured extensions
             ircbotext.InitExtensions(hcIrc)

@@ -182,7 +182,6 @@ func (hcIrc *HcIrc) changeUserMode(channel, nick, raw string) {
     hcIrc.debugPrint(s, "")
     uList[normalUsername] = newNick
     hcIrc.channelUsers[channel] = uList
-    fmt.Println(hcIrc.channelUsers[channel])
 }
 
 
