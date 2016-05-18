@@ -19,6 +19,8 @@ import
 var cmdArgDebug bool
 var cmdArgDaemon bool
 var cmdArgConsole bool
+var cmdArgWebsocketBind string
+var cmdArgWebsocketEnabled bool
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -45,6 +47,8 @@ func init() {
     flag.BoolVar(&cmdArgDebug, "debug", false, "Enable debug-mode")
     flag.BoolVar(&cmdArgDaemon, "D", false, "Daemonize (launch into background)")
     flag.BoolVar(&cmdArgConsole, "c", false, "Enable console (can not be used with -D)")
+    flag.BoolVar(&cmdArgWebsocketEnabled, "ws", false, "Enable listening for incomming http/websocket connections")
+    flag.StringVar(&cmdArgWebsocketBind, "wsbind", "0.0.0.0:8088", "Listen binding for incomming http/websocket connections (defaults to 0.0.0.0:8088)")
 }
 
 
@@ -289,7 +293,10 @@ func main() {
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
 
-            go ircbotint.TestWs(hcIrc)
+            // start webserver / websockets listener, if requested
+            if cmdArgWebsocketEnabled {
+                go ircbotint.EnableWebsocketServer(hcIrc, cmdArgWebsocketBind)
+            }
 
             fmt.Printf("(i) Connected to %s:%s\n", mainConfig.netHost, mainConfig.netPort)
 

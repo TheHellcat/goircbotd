@@ -8,34 +8,13 @@ import (
     "time"
 )
 
-var wsUpgrader = websocket.Upgrader{
-    ReadBufferSize:  1024,
-    WriteBufferSize: 1024,
-    CheckOrigin: checkOrigin,
-}
-
-
-var wsHcIrc *hcirc.HcIrc
-
-
-/**
- * check the origin of the request if we want to allow the connection or not
- */
-func checkOrigin( r *http.Request ) bool {
-    if "http://live.hellcat.net" == r.Header.Get("Origin") {
-        return true
-    } else {
-        return false
-    }
-}
-
 
 /**
  * client receiver thrread
  *
  * waits for messages being sent from the webclient and sends them to the request handler
  */
-func clientReceiver( conn *websocket.Conn, inChan chan string ) {
+func webchatClientReceiver( conn *websocket.Conn, inChan chan string ) {
     var mt int
     var ba []byte
     var message string
@@ -118,7 +97,7 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     // fork out the reader as separate routine/thread and listen on a chan
     // for it, this way we can have the read non-blocking and react on other
     // things as well while waiting for the client to send something
-    go clientReceiver(conn, inChan)
+    go webchatClientReceiver(conn, inChan)
 
     for running {
         select {
@@ -144,11 +123,4 @@ func webchatHandler (writer http.ResponseWriter, request *http.Request) {
     if wsHcIrc.Debugmode {
         fmt.Printf( "[WSDEBUG] Connection handler terminated: %s\n", myId )
     }
-}
-
-
-func TestWs(hcIrc *hcirc.HcIrc) {
-    wsHcIrc = hcIrc
-    http.HandleFunc("/webchat", webchatHandler)
-    http.ListenAndServe("0.0.0.0:8088", nil)
 }
