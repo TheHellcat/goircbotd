@@ -67,7 +67,7 @@ func (hcIrc *HcIrc) conscmdPart(command, params string) string {
 }
 
 func (hcIrc *HcIrc) conscmdRaw(command, params string) string {
-    hcIrc.OutQuickQueue <- params
+    hcIrc.OutboundQueue <- params
     return ""
 }
 
