@@ -89,13 +89,18 @@ func (hcIrc *HcIrc) channelUserJoin(channel, nick string) {
     }
 
     if hcIrc.Debugmode {
-        t := ""
-        for _, u := range uList {
-            t = fmt.Sprintf("%s,%s", t, u)
+        if !exists {
+            t := ""
+            for _, u := range uList {
+                t = fmt.Sprintf("%s,%s", t, u)
+            }
+            t = strings.Trim(t, ",")
+            s = fmt.Sprintf("Updated userlist after JOIN for channel %s:", channel)
+            hcIrc.debugPrint(s, t)
+        } else {
+            s = fmt.Sprintf("Skipped userlist update after JOIN (user already in list) for channel %s", channel)
+            hcIrc.debugPrint(s, "")
         }
-        t = strings.Trim(t, ",")
-        s = fmt.Sprintf("Updated userlist after JOIN for channel %s:", channel)
-        hcIrc.debugPrint(s, t)
     }
 }
 
