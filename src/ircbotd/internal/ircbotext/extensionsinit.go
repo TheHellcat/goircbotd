@@ -3,6 +3,7 @@ package ircbotext
 import (
     "hellcat/hcirc"
     "ircbotd/internal/ircbotext/ircbotextmisc"
+    "ircbotd/internal/ircbotext/ircbotextsup"
 )
 
 
@@ -15,6 +16,7 @@ import (
  */
 func InitExtensions(hcIrc *hcirc.HcIrc) {
     ircbotextmisc.SampleExtensionInit(hcIrc)
+    ircbotextsup.SupportExtensionInit(hcIrc)
 }
 
 
@@ -27,4 +29,5 @@ func InitExtensions(hcIrc *hcirc.HcIrc) {
  */
 func ShutdownExtensions(hcIrc *hcirc.HcIrc) {
     ircbotextmisc.SampleExtensionShutdown(hcIrc)
+    ircbotextsup.SupportExtensionShutdown(hcIrc)
 }
