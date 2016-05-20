@@ -78,7 +78,7 @@ func (hcIrc *HcIrc) channelUserJoin(channel, nick string) {
     if !exists {
         uList[s] = nick
     } else {
-        t = hcIrc.getUsermodeChars( nick )
+        t = hcIrc.getUsermodeChars(nick)
         if len(t) > 0 {
             // nickname contains usermode(s), so let's use it anyways as they might be more recent/correct
             // as what we know about at the moment
@@ -179,11 +179,11 @@ func (hcIrc *HcIrc) changeUserMode(channel, nick, raw string) {
     n = 0
     i = len(modeCommands)
     for j = 0; j < i; j++ {
-        s = modeCommands[j:j+1]
+        s = modeCommands[j:j + 1]
         if "+" == s || "-" == s {
             sign = s
         } else {
-            modeCommand = fmt.Sprintf( "%s%s", sign, s )
+            modeCommand = fmt.Sprintf("%s%s", sign, s)
             normalUsername = hcIrc.NormalizeNick(nicks[n])
 
             s = fmt.Sprintf("Got mode change for nick '%s' on channel '%s':", normalUsername, channel)
