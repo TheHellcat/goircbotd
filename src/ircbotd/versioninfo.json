@@ -21,10 +21,10 @@
 	},
 	"StringFileInfo":
 	{
-		"Comments": "",
+		"Comments": "Supplemental IRC bot daemon for chat connectivity of HC-TwitchManager",
 		"CompanyName": "HELLCAT",
 		"FileDescription": "IRC Bot Daemon",
-		"FileVersion": "",
+		"FileVersion": "v0.01",
 		"InternalName": "goircbotd",
 		"LegalCopyright": "(c)2016 HELLCAT",
 		"LegalTrademarks": "",
