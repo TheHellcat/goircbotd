@@ -324,7 +324,6 @@ func main() {
 
     // re-launch ourselfs as new process and quit if requested running as background daemon
     if cmdArgDaemon {
-        fmt.Printf(": %s\n", os.Args[0])
         cmd = exec.Command(os.Args[0], "")
         err = cmd.Start()
         if err != nil {
