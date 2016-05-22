@@ -34,6 +34,7 @@ var cmdArgUrl string
 var cmdArgStandalone string
 var cmdArgWebsocketBind string
 var cmdArgWebsocketEnabled bool
+var cmdArgDatadir bool
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -54,6 +55,7 @@ func init() {
     flag.StringVar(&cmdArgStandalone, "standalone", "", "Enable stand-alone mode and load main config from given file")
     flag.BoolVar(&cmdArgWebsocketEnabled, "ws", false, "Enable listening for incomming http/websocket connections")
     flag.StringVar(&cmdArgWebsocketBind, "wsbind", "0.0.0.0:8088", "Listen binding for incomming http/websocket connections (defaults to 0.0.0.0:8088)")
+    flag.StringVar(&cmdArgDatadir, "datadir", ".", "Directory to save datafiles. Defaults to current dir.")
 }
 
 
@@ -372,6 +374,7 @@ func main() {
         hcIrc = hcirc.New(mainConfig.netHost, mainConfig.netPort, mainConfig.botUsername, mainConfig.botNick, mainConfig.netPassword)
         hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
+        hcIrc.SetDataDir( cmdArgDatadir )
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
 

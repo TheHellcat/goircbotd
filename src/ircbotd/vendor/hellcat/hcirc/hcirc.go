@@ -53,6 +53,7 @@ type HcIrc struct {
     outQuickQueueRunning bool
     channelUsers         map[string]userlist
     threadIds            map[string]string
+    dataDir              string
 
     Error                string
 }
@@ -98,8 +99,20 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         channelUsers: make(map[string]userlist),
         threadIds: make(map[string]string),
         JoinedChannels: make(map[string]string),
+        dataDir: "./",
     }
     return Self
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) SetDataDir( dir string ) {
+    hcIrc.dataDir = fmt.Sprintf( "%s/", strings.Trim( dir, "/" ) )
+}
+func (hcIrc *HcIrc) GetDataDir() string {
+    return hcIrc.dataDir
 }
 
 
