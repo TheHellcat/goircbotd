@@ -34,7 +34,7 @@ var cmdArgUrl string
 var cmdArgStandalone string
 var cmdArgWebsocketBind string
 var cmdArgWebsocketEnabled bool
-var cmdArgDatadir bool
+var cmdArgDatadir string
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
