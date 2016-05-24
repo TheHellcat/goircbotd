@@ -76,12 +76,14 @@ func DmCheckTable( database string, table string, createStmt string ) {
  */
 func DmSet( database string, table string, keys []string, kvSet map[string]string ) {
     var sqlCheck string
-    //var sqlSet string
+    var sqlSet string
     var s string
     var t string
     var i int
     var keyVs map[int]string
-    //var isUpdate bool
+    var isUpdate bool
+    var rs *sql.Rows
+    var err error
 
     s = ""
     i = 0
@@ -131,30 +133,28 @@ func DmSet( database string, table string, keys []string, kvSet map[string]strin
 
     // super fugly workaround, till I figured out how to make this dynamic
     if len(keyVs) == 1 {
-        rs, err := stmt.Query(keyVs[0])
-        err = err
-        fmt.Println(rs)
+        rs, err = stmt.Query(keyVs[0])
     } else if len(keys) == 2 {
-        rs, err := stmt.Query(keyVs[0], keyVs[1])
-        err = err
-        fmt.Println(rs)
+        rs, err = stmt.Query(keyVs[0], keyVs[1])
     } else if len(keys) == 3 {
-        rs, err := stmt.Query(keyVs[0], keyVs[1], keyVs[2])
-        err = err
-        fmt.Println(rs)
+        rs, err = stmt.Query(keyVs[0], keyVs[1], keyVs[2])
     } else if len(keys) == 4 {
-        rs, err := stmt.Query(keyVs[0], keyVs[1], keyVs[2], keyVs[3])
-        err = err
-        fmt.Println(rs)
+        rs, err = stmt.Query(keyVs[0], keyVs[1], keyVs[2], keyVs[3])
     } else {
         //err = error( fmt.Sprintf( "Unsupportet number of keys given: %d", len(keyVs)) )
     }
     if err != nil {
         if hcIrc.Debugmode {
             fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR executing statement: %s\n", err.Error())
-            return
         }
+        return
     }
     tx.Commit()
 
+    isUpdate = false
+    if rs.Next() {
+        isUpdate = true
+    }
+
+    
 }
