@@ -16,6 +16,17 @@ func UsermanExtensionInit(hcIrc *hcirc.HcIrc) {
     m["id"] = "1"
     m["data"] = "meep"
     ircbotint.DmSet("test", "toast", []string{"id"}, m)
+
+    m["id"] = "2"
+    m["data"] = "moop"
+    ircbotint.DmSet("test", "toast", []string{"id"}, m)
+    m["id"] = "2"
+    m["data"] = "woop"
+    ircbotint.DmSet("test", "toast", []string{"id"}, m)
+
+    m["id"] = "3"
+    m["data"] = "ding"
+    ircbotint.DmSet("test", "toast", []string{"id"}, m)
 }
 
 

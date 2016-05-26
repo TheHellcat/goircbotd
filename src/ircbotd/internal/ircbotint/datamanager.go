@@ -18,10 +18,19 @@ func DmCheckTable( database string, table string, createStmt string ) {
     var err error
     var needCreate bool
     var rName string
+    var db *sql.DB
+    var rs *sql.Rows
+    var b bool
+
+    _, b = dmCacheCheckTable[table]
+    if b {
+        // we already checked for this table, so it exists, nothing to do now
+        return
+    }
 
     query = fmt.Sprintf( "SELECT name FROM sqlite_master WHERE type='table' AND name='%s';", table )
 
-    db, err := sql.Open("sqlite3", fmt.Sprintf("%s%s.db", hcIrc.GetDataDir(), database))
+    db, err = sql.Open("sqlite3", fmt.Sprintf("%s%s.db", hcIrc.GetDataDir(), database))
     if err != nil {
         if hcIrc.Debugmode {
             fmt.Printf("[DATAMANAGERDEBUG][DmCheckTable] ERROR opening database: %s\n", err.Error())
@@ -30,7 +39,7 @@ func DmCheckTable( database string, table string, createStmt string ) {
     }
     defer db.Close()
 
-    rs, err := db.Query( query )
+    rs, err = db.Query( query )
 
     if err != nil {
         if hcIrc.Debugmode {
@@ -54,6 +63,7 @@ func DmCheckTable( database string, table string, createStmt string ) {
             needCreate = true
         }
     }
+    rs.Close()
 
     if needCreate {
         // table does not exist, execute the supplied create query to fix this
@@ -68,6 +78,8 @@ func DmCheckTable( database string, table string, createStmt string ) {
             }
         }
     }
+
+    dmCacheCheckTable[table] = table
 }
 
 
@@ -78,83 +90,209 @@ func DmSet( database string, table string, keys []string, kvSet map[string]strin
     var sqlCheck string
     var sqlSet string
     var s string
-    var t string
-    var i int
+    var t, u, v string
+    var i, j int
     var keyVs map[int]string
     var isUpdate bool
     var rs *sql.Rows
     var err error
+    var kWhere string
+    var vWhere map[int]string
+    var db *sql.DB
+    var tx *sql.Tx
+    var stmt *sql.Stmt
 
     s = ""
     i = 0
     keyVs = make(map[int]string)
+    vWhere = make(map[int]string)
     for _, t = range keys {
         if len(s) == 0 {
             s = fmt.Sprintf("%s=?", t)
         } else {
-            s = fmt.Sprintf(" AND %s=?", t)
+            s = fmt.Sprintf("%s AND %s=?", s, t)
         }
         keyVs[i] = kvSet[t]  // build map with values in the same order as keys
         i++
     }
     i--
 
-    // opem DB connection
-
-    db, err := sql.Open("sqlite3", fmt.Sprintf("%s%s.db", hcIrc.GetDataDir(), database))
+    // open DB connection
+    db, err = sql.Open("sqlite3", fmt.Sprintf("%s%s.db", hcIrc.GetDataDir(), database))
     if err != nil {
         if hcIrc.Debugmode {
             fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR opening database: %s\n", err.Error())
-            return
         }
+        return
     }
     defer db.Close()
 
-    tx, err := db.Begin()
+    // begin new transaction
+    tx, err = db.Begin()
     if err != nil {
         if hcIrc.Debugmode {
-            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR starting DB session: %s\n", err.Error())
-            return
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR starting read transaction: %s\n", err.Error())
         }
+        return
     }
+    defer tx.Commit()
+
+    // remember our WHERE for later
+    kWhere = s
+    vWhere = keyVs
 
 
     // check if we need to INSERT or UPDATE
 
-    sqlCheck = fmt.Sprintf("SELECT * FROM %s WHERE %s;", table, s)
-    stmt, err := tx.Prepare(sqlCheck)
+    sqlCheck = fmt.Sprintf("SELECT * FROM %s WHERE %s;", table, kWhere)
+    stmt, err = tx.Prepare(sqlCheck)
     if err != nil {
         if hcIrc.Debugmode {
-            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR setting up statement: %s\n", err.Error())
-            return
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR setting up check statement: %s\n", err.Error())
         }
+        return
     }
     defer stmt.Close()
 
     // super fugly workaround, till I figured out how to make this dynamic
     if len(keyVs) == 1 {
         rs, err = stmt.Query(keyVs[0])
-    } else if len(keys) == 2 {
+    } else if len(keyVs) == 2 {
         rs, err = stmt.Query(keyVs[0], keyVs[1])
-    } else if len(keys) == 3 {
+    } else if len(keyVs) == 3 {
         rs, err = stmt.Query(keyVs[0], keyVs[1], keyVs[2])
-    } else if len(keys) == 4 {
+    } else if len(keyVs) == 4 {
         rs, err = stmt.Query(keyVs[0], keyVs[1], keyVs[2], keyVs[3])
     } else {
-        //err = error( fmt.Sprintf( "Unsupportet number of keys given: %d", len(keyVs)) )
+        //err = error( fmt.Sprintf( "Unsupported number of keys given: %d", len(keyVs)) )
     }
     if err != nil {
         if hcIrc.Debugmode {
-            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR executing statement: %s\n", err.Error())
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR executing check statement: %s\n", err.Error())
         }
         return
     }
-    tx.Commit()
 
     isUpdate = false
     if rs.Next() {
         isUpdate = true
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] Value exists, using UPDATE\n")
+        }
+    } else {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] Value does not exist, using INSERT\n")
+        }
     }
 
-    
+    // finish/close current transaction
+    rs.Close()
+    stmt.Close()
+    tx.Commit()
+
+
+    // build the actual SQL to write the values into the DB
+
+    keyVs = make(map[int]string)
+    if isUpdate {
+        s = ""
+        i = 0
+        for u, t = range kvSet {
+            if len(s) == 0 {
+                s = fmt.Sprintf("%s=?", u)
+            } else {
+                s = fmt.Sprintf("%s, %s=?", s, u)
+            }
+            keyVs[i] = t  // build map with values in the same order as columns
+            i++
+        }
+        i--
+        sqlSet = fmt.Sprintf( "UPDATE %s SET %s WHERE %s;", table, s, kWhere )
+    } else {
+        s = ""
+        i = 0
+        for u, t = range kvSet {
+            if len(s) == 0 {
+                s = fmt.Sprintf("%s", u)
+                v = "?"
+            } else {
+                s = fmt.Sprintf("%s, %s", s, u)
+                v = fmt.Sprintf("%s, ?", v)
+            }
+            keyVs[i] = t  // build map with values in the same order as columns
+            i++
+        }
+        i--
+        sqlSet = fmt.Sprintf( "INSERT INTO %s (%s) VALUES (%s);", table, s, v )
+    }
+
+    // new transaction
+    tx, err = db.Begin()
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR starting write transaction: %s\n", err.Error())
+        }
+        return
+    }
+    defer tx.Commit()
+
+    stmt, err = tx.Prepare(sqlSet)
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR setting up write statement: %s\n", err.Error())
+        }
+        return
+    }
+    defer stmt.Close()
+
+    if hcIrc.Debugmode {
+        fmt.Printf("[DATAMANAGERDEBUG][DmSet] Set of %d values to be written\n", len(keyVs))
+    }
+
+    // add the WHERE values to our value array/map if we're doing an UPDATE
+    if isUpdate {
+        j = len(keyVs)
+        for i = 0; i < len(vWhere); i++ {
+            keyVs[j] = vWhere[i]
+            j++
+        }
+    }
+
+    // same fuglieness as above
+    if len(keyVs) == 1 {
+        _, err = stmt.Exec(keyVs[0])
+    } else if len(keyVs) == 2 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1])
+    } else if len(keyVs) == 3 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1], keyVs[2])
+    } else if len(keyVs) == 4 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1], keyVs[2], keyVs[3])
+    } else if len(keyVs) == 5 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1], keyVs[2], keyVs[3], keyVs[4])
+    } else if len(keyVs) == 6 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1], keyVs[2], keyVs[3], keyVs[4], keyVs[5])
+    } else if len(keyVs) == 7 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1], keyVs[2], keyVs[3], keyVs[4], keyVs[5], keyVs[6])
+    } else {
+        //err = error( fmt.Sprintf( "Unsupported number of keys given: %d", len(keyVs)) )
+    }
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmSet] ERROR executing write statement: %s\n", err.Error())
+        }
+        return
+    }
+
+    // close everything off and good bye
+    tx.Commit()
+    stmt.Close()
+    db.Close()
+}
+
+
+/**
+ *
+ */
+func DmGet( database string, table string, getColumns []string, getCriteria map[string]string ) map[string]string {
+
 }

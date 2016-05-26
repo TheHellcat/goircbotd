@@ -325,6 +325,7 @@ func main() {
     var b bool
 
     flag.Parse()
+    os.Mkdir( cmdArgDatadir, 755 )
 
     // some fancy "who am I splash" output :-)
     fmt.Printf("\n%s - %s\n  for %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
