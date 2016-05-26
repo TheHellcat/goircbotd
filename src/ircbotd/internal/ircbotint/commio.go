@@ -30,9 +30,9 @@ func CallHttp(param1, param2 string) (string, error) {
     var ba []byte
 
     if len(param2) > 0 {
-        s = fmt.Sprintf("%s/%s/%s", httpUrl, param1, param2)
+        s = fmt.Sprintf("%s%s/%s", httpUrl, param1, param2)
     } else {
-        s = fmt.Sprintf("%s/%s", httpUrl, param1)
+        s = fmt.Sprintf("%s%s", httpUrl, param1)
     }
 
     r, err = http.Get(s)
