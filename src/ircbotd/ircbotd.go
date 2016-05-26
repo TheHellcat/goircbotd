@@ -325,7 +325,7 @@ func main() {
     var b bool
 
     flag.Parse()
-    os.Mkdir( cmdArgDatadir, 755 )
+    os.Mkdir(cmdArgDatadir, 755)
 
     // some fancy "who am I splash" output :-)
     fmt.Printf("\n%s - %s\n  for %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
@@ -375,7 +375,7 @@ func main() {
         hcIrc = hcirc.New(mainConfig.netHost, mainConfig.netPort, mainConfig.botUsername, mainConfig.botNick, mainConfig.netPassword)
         hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
-        hcIrc.SetDataDir( cmdArgDatadir )
+        hcIrc.SetDataDir(cmdArgDatadir)
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
 

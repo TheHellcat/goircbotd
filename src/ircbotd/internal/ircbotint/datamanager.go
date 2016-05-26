@@ -6,14 +6,13 @@ import (
     _ "github.com/mattn/go-sqlite3"
 )
 
-
 var dmCacheCheckTable map[string]string
 
 
 /**
  *
  */
-func DmCheckTable( database string, table string, createStmt string ) {
+func DmCheckTable(database string, table string, createStmt string) {
     var query string
     var err error
     var needCreate bool
@@ -28,7 +27,7 @@ func DmCheckTable( database string, table string, createStmt string ) {
         return
     }
 
-    query = fmt.Sprintf( "SELECT name FROM sqlite_master WHERE type='table' AND name='%s';", table )
+    query = fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='table' AND name='%s';", table)
 
     db, err = sql.Open("sqlite3", fmt.Sprintf("%s%s.db", hcIrc.GetDataDir(), database))
     if err != nil {
@@ -39,7 +38,7 @@ func DmCheckTable( database string, table string, createStmt string ) {
     }
     defer db.Close()
 
-    rs, err = db.Query( query )
+    rs, err = db.Query(query)
     if err != nil {
         if hcIrc.Debugmode {
             fmt.Printf("[DATAMANAGERDEBUG][DmCheckTable] Error looking up table '%s.%s: %s'\n", database, table, err.Error())
@@ -58,7 +57,7 @@ func DmCheckTable( database string, table string, createStmt string ) {
     if !rs.Next() {
         needCreate = true
     } else {
-        rs.Scan( &rName )
+        rs.Scan(&rName)
         if rName != table {
             needCreate = true
         }
@@ -67,7 +66,7 @@ func DmCheckTable( database string, table string, createStmt string ) {
 
     if needCreate {
         // table does not exist, execute the supplied create query to fix this
-        _, err = db.Exec( createStmt )
+        _, err = db.Exec(createStmt)
         if err != nil {
             if hcIrc.Debugmode {
                 fmt.Printf("[DATAMANAGERDEBUG][DmCheckTable] ERROR creating table '%s.%s': %s\n", database, table, err.Error())
@@ -87,7 +86,7 @@ func DmCheckTable( database string, table string, createStmt string ) {
 /**
  *
  */
-func DmSet( database string, table string, keys []string, kvSet map[string]string ) {
+func DmSet(database string, table string, keys []string, kvSet map[string]string) {
     var vCheck map[string]string
     var sqlSet string
     var s string
@@ -124,7 +123,7 @@ func DmSet( database string, table string, keys []string, kvSet map[string]strin
     for _, s = range keys {
         vCheck[s] = kvSet[s]
     }
-    _, i = DmGet( database, table, keys, vCheck )
+    _, i = DmGet(database, table, keys, vCheck)
     if i < 0 {
         isUpdate = false
         if hcIrc.Debugmode {
@@ -174,7 +173,7 @@ func DmSet( database string, table string, keys []string, kvSet map[string]strin
             i++
         }
         i--
-        sqlSet = fmt.Sprintf( "UPDATE %s SET %s WHERE %s;", table, s, kWhere )
+        sqlSet = fmt.Sprintf("UPDATE %s SET %s WHERE %s;", table, s, kWhere)
     } else {
         s = ""
         i = 0
@@ -190,7 +189,7 @@ func DmSet( database string, table string, keys []string, kvSet map[string]strin
             i++
         }
         i--
-        sqlSet = fmt.Sprintf( "INSERT INTO %s (%s) VALUES (%s);", table, s, v )
+        sqlSet = fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", table, s, v)
     }
 
     // new transaction
@@ -261,7 +260,7 @@ func DmSet( database string, table string, keys []string, kvSet map[string]strin
 /**
  *
  */
-func DmGet( database string, table string, getColumns []string, getCriteria map[string]string ) (map[int]map[string]string, int) {
+func DmGet(database string, table string, getColumns []string, getCriteria map[string]string) (map[int]map[string]string, int) {
     var sqlCheck string
     var s string
     var t, u string
@@ -386,4 +385,11 @@ func DmGet( database string, table string, getColumns []string, getCriteria map[
     db.Close()
 
     return returnData, i
+}
+
+
+/**
+ *
+ */
+func DmDelete(database string, table string, delCriteria map[string]string) (map[int]map[string]string, int) {
 }
