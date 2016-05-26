@@ -3,6 +3,7 @@ package ircbotextsup
 import (
     "hellcat/hcirc"
     "ircbotd/internal/ircbotint"
+    "fmt"
 )
 
 
@@ -27,6 +28,22 @@ func UsermanExtensionInit(hcIrc *hcirc.HcIrc) {
     m["id"] = "3"
     m["data"] = "ding"
     ircbotint.DmSet("test", "toast", []string{"id"}, m)
+
+
+    m["id"] = "4"
+    m["data"] = "dong"
+    ircbotint.DmSet("test", "toast", []string{"id"}, m)
+    m["id"] = "5"
+    m["data"] = "dong"
+    ircbotint.DmSet("test", "toast", []string{"id"}, m)
+    m["id"] = "6"
+    m["data"] = "dong"
+    ircbotint.DmSet("test", "toast", []string{"id"}, m)
+
+    m = make(map[string]string)
+    m["data"] = "dong"
+    r, i := ircbotint.DmGet("test", "toast", []string{"id", "data"}, m)
+    fmt.Println(i, r)
 }
 
 
