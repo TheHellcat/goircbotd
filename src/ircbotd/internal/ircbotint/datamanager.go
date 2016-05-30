@@ -107,9 +107,9 @@ func DmSet(database string, table string, keys []string, kvSet map[string]string
     vWhere = make(map[int]string)
     for _, t = range keys {
         if len(s) == 0 {
-            s = fmt.Sprintf("%s=?", t)
+            s = fmt.Sprintf("%s LIKE ?", t)
         } else {
-            s = fmt.Sprintf("%s AND %s=?", s, t)
+            s = fmt.Sprintf("%s AND %s LIKE ?", s, t)
         }
         keyVs[i] = kvSet[t]  // build map with values in the same order as keys
         i++
@@ -285,9 +285,9 @@ func DmGet(database string, table string, getColumns []string, getCriteria map[s
     keyVs = make(map[int]string)
     for u, t = range getCriteria {
         if len(s) == 0 {
-            s = fmt.Sprintf("%s=?", u)
+            s = fmt.Sprintf("%s LIKE ?", u)
         } else {
-            s = fmt.Sprintf("%s AND %s=?", s, u)
+            s = fmt.Sprintf("%s AND %s LIKE ?", s, u)
         }
         keyVs[i] = t  // build map with values in the same order as keys
         i++
@@ -391,5 +391,87 @@ func DmGet(database string, table string, getColumns []string, getCriteria map[s
 /**
  *
  */
-func DmDelete(database string, table string, delCriteria map[string]string) (map[int]map[string]string, int) {
+func DmDelete(database string, table string, delCriteria map[string]string) {
+    var sqlCheck string
+    var s string
+    var t, u string
+    var i int
+    var keyVs map[int]string
+    var err error
+    var kWhere string
+    var db *sql.DB
+    var tx *sql.Tx
+    var stmt *sql.Stmt
+
+    s = ""
+    i = 0
+    keyVs = make(map[int]string)
+    for u, t = range delCriteria {
+        if len(s) == 0 {
+            s = fmt.Sprintf("%s LIKE ?", u)
+        } else {
+            s = fmt.Sprintf("%s AND %s LIKE ?", s, u)
+        }
+        keyVs[i] = t  // build map with values in the same order as keys
+        i++
+    }
+    i--
+
+    // open DB connection
+    db, err = sql.Open("sqlite3", fmt.Sprintf("%s%s.db", hcIrc.GetDataDir(), database))
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmDelete] ERROR opening database: %s\n", err.Error())
+        }
+        return
+    }
+    defer db.Close()
+
+    // begin new transaction
+    tx, err = db.Begin()
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmDelete] ERROR starting read transaction: %s\n", err.Error())
+        }
+        return
+    }
+    defer tx.Commit()
+
+    kWhere = s
+
+
+    // build query and fetch fetch results from database
+
+    sqlCheck = fmt.Sprintf("DELETE FROM %s WHERE %s;", table, kWhere)
+    stmt, err = tx.Prepare(sqlCheck)
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmDelete] ERROR setting up statement: %s\n", err.Error())
+        }
+        return
+    }
+    defer stmt.Close()
+
+    // super fugly workaround, till I figured out how to make this dynamic
+    if len(keyVs) == 1 {
+        _, err = stmt.Exec(keyVs[0])
+    } else if len(keyVs) == 2 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1])
+    } else if len(keyVs) == 3 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1], keyVs[2])
+    } else if len(keyVs) == 4 {
+        _, err = stmt.Exec(keyVs[0], keyVs[1], keyVs[2], keyVs[3])
+    } else {
+        //err = error( fmt.Sprintf( "Unsupported number of keys given: %d", len(keyVs)) )
+    }
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[DATAMANAGERDEBUG][DmDelete] ERROR executing statement: %s\n", err.Error())
+        }
+        return
+    }
+
+    stmt.Close()
+    tx.Commit()
+    db.Close()
 }

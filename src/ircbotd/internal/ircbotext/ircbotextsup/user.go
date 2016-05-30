@@ -43,6 +43,10 @@ func UsermanExtensionInit(hcIrc *hcirc.HcIrc) {
     m["data"] = "dong"
     r, i := ircbotint.DmGet("test", "toast", []string{"id", "data"}, m)
     fmt.Println(i, r)
+
+    m = make(map[string]string)
+    m["data"] = "zing%"
+    ircbotint.DmDelete("test", "toast", m)
 }
 
 
