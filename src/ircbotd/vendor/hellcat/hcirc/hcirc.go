@@ -108,8 +108,8 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
 /**
  *
  */
-func (hcIrc *HcIrc) SetDataDir( dir string ) {
-    hcIrc.dataDir = fmt.Sprintf( "%s/", strings.Trim( dir, "/" ) )
+func (hcIrc *HcIrc) SetDataDir(dir string) {
+    hcIrc.dataDir = fmt.Sprintf("%s/", strings.Trim(dir, "/"))
 }
 func (hcIrc *HcIrc) GetDataDir() string {
     return hcIrc.dataDir

@@ -2,8 +2,10 @@
 
 rm -Rf bin
 rm -Rf pkg
-# export GOROOT=/data1/build/go
 export GOPATH=$PWD
 export GOBIN=$PWD/bin
+
+go clean github.com/mattn/go-sqlite3
 go clean src/ircbotd/ircbotd.go
+go install github.com/mattn/go-sqlite3
 go install src/ircbotd/ircbotd.go

@@ -320,7 +320,7 @@ func DmGet(database string, table string, getColumns []string, getCriteria map[s
 
     // build query and fetch fetch results from database
 
-    sqlCheck = fmt.Sprintf("SELECT %s FROM %s WHERE %s;", strings.Join(getColumns,","), table, kWhere)
+    sqlCheck = fmt.Sprintf("SELECT %s FROM %s WHERE %s;", strings.Join(getColumns, ","), table, kWhere)
     stmt, err = tx.Prepare(sqlCheck)
     if err != nil {
         if hcIrc.Debugmode {
