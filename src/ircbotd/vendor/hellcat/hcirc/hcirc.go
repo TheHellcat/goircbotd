@@ -10,7 +10,7 @@ import (
 
 type userlist map[string]string
 
-type userinfo struct {
+type Userinfo struct {
     NickDislpayname    string
     NickModes          string
     NickNormalizedName string
@@ -324,11 +324,7 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
  *
  */
 func (hcIrc *HcIrc) SendToServer(message string) {
-    //    var i int
-    //    var err error
-
     hcIrc.debugPrint("  to server <<<", message)
-    //    i, err =
     message = strings.Replace(message, string('\n'), "", -1)
     message = strings.Replace(message, string('\r'), "", -1)
     message = fmt.Sprintf("%s\n", message)

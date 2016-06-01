@@ -4,6 +4,7 @@ import (
     "fmt"
     "database/sql"
     _ "github.com/mattn/go-sqlite3"
+    "strings"
 )
 
 var dmCacheCheckTable map[string]string
@@ -124,7 +125,7 @@ func DmSet(database string, table string, keys []string, kvSet map[string]string
         vCheck[s] = kvSet[s]
     }
     _, i = DmGet(database, table, keys, vCheck)
-    if i < 0 {
+    if i == 0 {
         isUpdate = false
         if hcIrc.Debugmode {
             fmt.Printf("[DATAMANAGERDEBUG][DmSet] Value does not exist, using INSERT\n")
@@ -319,7 +320,7 @@ func DmGet(database string, table string, getColumns []string, getCriteria map[s
 
     // build query and fetch fetch results from database
 
-    sqlCheck = fmt.Sprintf("SELECT * FROM %s WHERE %s;", table, kWhere)
+    sqlCheck = fmt.Sprintf("SELECT %s FROM %s WHERE %s;", strings.Join(getColumns,","), table, kWhere)
     stmt, err = tx.Prepare(sqlCheck)
     if err != nil {
         if hcIrc.Debugmode {
@@ -377,7 +378,6 @@ func DmGet(database string, table string, getColumns []string, getCriteria map[s
 
         i++
     }
-    i--
 
     rs.Close()
     stmt.Close()
