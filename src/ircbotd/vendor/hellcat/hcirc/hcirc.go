@@ -10,7 +10,7 @@ import (
 
 type userlist map[string]string
 
-type userinfo struct {
+type Userinfo struct {
     NickDislpayname    string
     NickModes          string
     NickNormalizedName string
@@ -53,6 +53,7 @@ type HcIrc struct {
     outQuickQueueRunning bool
     channelUsers         map[string]userlist
     threadIds            map[string]string
+    dataDir              string
 
     Error                string
 }
@@ -98,8 +99,20 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         channelUsers: make(map[string]userlist),
         threadIds: make(map[string]string),
         JoinedChannels: make(map[string]string),
+        dataDir: "./",
     }
     return Self
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) SetDataDir( dir string ) {
+    hcIrc.dataDir = fmt.Sprintf( "%s/", strings.Trim( dir, "/" ) )
+}
+func (hcIrc *HcIrc) GetDataDir() string {
+    return hcIrc.dataDir
 }
 
 
@@ -325,11 +338,7 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
  *
  */
 func (hcIrc *HcIrc) SendToServer(message string) {
-    //    var i int
-    //    var err error
-
     hcIrc.debugPrint("  to server <<<", message)
-    //    i, err =
     message = strings.Replace(message, string('\n'), "", -1)
     message = strings.Replace(message, string('\r'), "", -1)
     message = fmt.Sprintf("%s\n", message)

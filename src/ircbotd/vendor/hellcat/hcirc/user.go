@@ -26,14 +26,14 @@ func (hcIrc *HcIrc) RemoveUserFromChannel(channel, nick string) {
 /**
  *
  */
-func (hcIrc *HcIrc) GetChannelUsers(channel string) map[string]userinfo {
+func (hcIrc *HcIrc) GetChannelUsers(channel string) map[string]Userinfo {
     var uList userlist
-    var uInfoList map[string]userinfo
+    var uInfoList map[string]Userinfo
     var exists bool
     var nick, displayname string
-    var user userinfo
+    var user Userinfo
 
-    uInfoList = make(map[string]userinfo)
+    uInfoList = make(map[string]Userinfo)
 
     uList, exists = hcIrc.channelUsers[channel]
 

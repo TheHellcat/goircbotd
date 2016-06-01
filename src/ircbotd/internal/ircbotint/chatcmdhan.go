@@ -30,6 +30,14 @@ func RegisterInternalChatCommand(command string, function ChatCommandCallback) {
 /**
  *
  */
+func GetRegisteredInternalChatCommands() map[string]ChatCommandCallback {
+    return regedChatCommandsInt
+}
+
+
+/**
+ *
+ */
 func executeCommand(command, channel, nick, user, host, cmd, param string, function ChatCommandCallback) {
     var s string
 

@@ -36,6 +36,7 @@ var cmdArgUrl string
 var cmdArgStandalone string
 var cmdArgWebsocketBind string
 var cmdArgWebsocketEnabled bool
+var cmdArgDatadir string
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -56,6 +57,7 @@ func init() {
     flag.StringVar(&cmdArgStandalone, "standalone", "", "Enable stand-alone mode and load main config from given file")
     flag.BoolVar(&cmdArgWebsocketEnabled, "ws", false, "Enable listening for incomming http/websocket connections")
     flag.StringVar(&cmdArgWebsocketBind, "wsbind", "0.0.0.0:8088", "Listen binding for incomming http/websocket connections (defaults to 0.0.0.0:8088)")
+    flag.StringVar(&cmdArgDatadir, "datadir", ".", "Directory to save datafiles. Defaults to current dir.")
 }
 
 
@@ -133,6 +135,17 @@ func fetchMainConfig() (bool, string) {
 /**
  *
  */
+func chatCmdFuncCB(command, channel, nick, user, host, cmd, param string) string {
+    go interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param)
+
+    // interfaceRegisteredCommand() takes care of sending output to server queues by itself
+    return ""
+}
+
+
+/**
+ *
+ */
 func fetchRegisteredCommands() {
     var sJson string
     var jsonDecoder *json.Decoder
@@ -180,6 +193,7 @@ func fetchRegisteredCommands() {
         a1 = strings.Split(strings.Trim(sChatCommands, " "), " ")
         for _, cmd := range a1 {
             regedChatCommands[cmd] = "1"
+            ircbotint.RegisterInternalChatCommand(cmd, chatCmdFuncCB)
         }
         a1 = strings.Split(strings.Trim(sTimedCommands, " "), " ")
         for _, cmd := range a1 {
@@ -205,7 +219,7 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
     }
     if "!test2" == cmd {
         s := fmt.Sprintf("PRIVMSG %s :%s", channel, param)
-        hcIrc.OutQuickQueue <- s
+        hcIrc.OutboundQueue <- s
     }
     if "!test3" == cmd {
         mainCtrl <- "SHUTDOWN"
@@ -228,7 +242,7 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
  *
  */
 func processPrivmsg(command, channel, nick, user, host, text string) {
-    var isRegedChatCommand bool
+    //var isRegedChatCommand bool
     var a []string
     var cmd string
     var param string
@@ -241,11 +255,13 @@ func processPrivmsg(command, channel, nick, user, host, text string) {
         param = ""
     }
 
-    _, isRegedChatCommand = regedChatCommands[cmd]
-    if isRegedChatCommand {
-        go interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param)
-    }
+    /* not needed anymore, call to interfaceRegisteredCommand() is now handled by the registered callback */
+    //_, isRegedChatCommand = regedChatCommands[cmd]
+    //if isRegedChatCommand {
+    //    go interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param)
+    //}
 
+    // fun fact: which (the registered commands handler) is initiated by this very call xD
     ircbotint.HandleCommand(command, channel, nick, user, host, cmd, param)
 }
 
@@ -311,6 +327,7 @@ func main() {
     var a []string
 
     flag.Parse()
+    os.Mkdir(cmdArgDatadir, 755)
 
     // some fancy "who am I splash" output :-)
     fmt.Printf("\n%s - %s\n  for %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
@@ -370,12 +387,10 @@ func main() {
             return
         }
 
-        // fetch registered commands from parent application
-        fetchRegisteredCommands()
-
         hcIrc = hcirc.New(mainConfig.netHost, mainConfig.netPort, mainConfig.botUsername, mainConfig.botNick, mainConfig.netPassword)
         hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
+        hcIrc.SetDataDir(cmdArgDatadir)
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
 
@@ -395,14 +410,17 @@ func main() {
             hcIrc.StartOutboundQueue()
             hcIrc.StartOutQuickQueue()
 
+            // init handler for internal chat commands
+            ircbotint.InitChatcmdHan(hcIrc)
+
+            // fetch registered commands from parent application
+            fetchRegisteredCommands()
+
             // start main listener loop
             go serverListener(hcIrc)
 
             // start timed commands
             go timedCommandsScheduler()
-
-            // init handler for internal chat commands
-            ircbotint.InitChatcmdHan(hcIrc)
 
             // init all configured extensions
             ircbotext.InitExtensions(hcIrc)

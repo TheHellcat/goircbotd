@@ -142,7 +142,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     if clmsgid > 268435455 {
                         // some cheap in32 kaboom protection by intentionally rolling over
                         // this way there is a clearly defines behaviour when we come close to the limit
-                        // and no, I don't wanna use an in64 - it's also not really required here.
+                        // and no, I don't wanna use an int64 - it's also not really required here.
                         clmsgid = 1
                     }
                     clientMsg["type"] = "chatmessage"
