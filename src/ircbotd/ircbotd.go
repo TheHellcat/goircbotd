@@ -327,7 +327,7 @@ func main() {
     var a []string
 
     flag.Parse()
-    os.Mkdir(cmdArgDatadir, 755)
+    os.MkdirAll(cmdArgDatadir, 0755)
 
     // some fancy "who am I splash" output :-)
     fmt.Printf("\n%s - %s\n  for %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
