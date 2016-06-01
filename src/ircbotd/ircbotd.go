@@ -306,6 +306,7 @@ func main() {
     var mainRunning bool
     var s string
     var b bool
+    var a []string
 
     flag.Parse()
 
@@ -321,8 +322,21 @@ func main() {
 
     // re-launch ourselfs as new process and quit if requested running as background daemon
     if cmdArgDaemon {
-        fmt.Printf(": %s\n", os.Args[0])
-        cmd = exec.Command(os.Args[0], "")
+        a = make([]string, 10)
+        if cmdArgDebug {
+            a[0] = "--debug"
+        } else {
+            a[0] = "--debug=0"
+        }
+        if cmdArgWebsocketEnabled {
+            a[1] = "--ws"
+        } else {
+            a[1] = "--ws=0"
+        }
+        a[2] = fmt.Sprintf("--base=%s", cmdArgUrl)
+        a[3] = fmt.Sprintf("--standalone=%s", cmdArgStandalone)
+        a[4] = fmt.Sprintf("--wsbind=%s", cmdArgWebsocketBind)
+        cmd = exec.Command(os.Args[0], a[0], a[1], a[2], a[3], a[4])
         err = cmd.Start()
         if err != nil {
             fmt.Printf("Error launching to background: %s\n\n", err.Error())
