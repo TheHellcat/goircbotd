@@ -256,9 +256,11 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
  *
  */
 func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, text, raw string) {
-    var s string
+    var s, t, u string
+    var uList userlist
     var i int
     var a []string
+    var b bool
 
     // keepalive pings from the server
     if command == "PING" {
@@ -299,6 +301,18 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
         // user left the server altogether (i.e. needs to be "PARTed" from all channels)
         for s = range hcIrc.channelUsers {
             hcIrc.channelUserPart(s, nick)
+        }
+    }
+    if "NICK" == command {
+        // user changed nickname, need to update all channel lists with new nick
+        for s = range hcIrc.channelUsers {
+            uList = hcIrc.channelUsers[s]
+            u, b = uList[ hcIrc.NormalizeNick(nick) ]
+            if b {
+                t = fmt.Sprintf("%s%s", hcIrc.getUsermodeChars(u), hcIrc.stripUsermodeChars(text))
+                hcIrc.channelUserPart(s, nick)
+                hcIrc.channelUserJoin(s, t)
+            }
         }
     }
     if "MODE" == command {

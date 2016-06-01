@@ -66,10 +66,16 @@ func (hcIrc *HcIrc) conscmdPart(command, params string) string {
     return ""
 }
 
+func (hcIrc *HcIrc) conscmdRaw(command, params string) string {
+    hcIrc.OutboundQueue <- params
+    return ""
+}
+
 func (hcIrc *HcIrc) RegisterAdditionalConsoleCommands() {
     hcIrc.RegisterConsoleCommand("say", "Says something into the given channel", hcIrc.conscmdSay)
     hcIrc.RegisterConsoleCommand("channels", "Lists all channels the bot is joined into", hcIrc.conscmdChannels)
     hcIrc.RegisterConsoleCommand("join", "Joins a channel", hcIrc.conscmdJoin)
     hcIrc.RegisterConsoleCommand("part", "Parts a channel", hcIrc.conscmdPart)
     hcIrc.RegisterConsoleCommand("users", "Lists all online users in all joined", hcIrc.conscmdUsers)
+    hcIrc.RegisterConsoleCommand("raw", "Sends raw command/message to IRC server", hcIrc.conscmdRaw)
 }
