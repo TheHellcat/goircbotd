@@ -201,7 +201,7 @@ func (coff *Coff) addSymbol(s string) {
 func NewRSRC() *Coff {
 	return &Coff{
 		pe.FileHeader{
-			Machine:              pe.IMAGE_FILE_MACHINE_I386,
+			Machine:              pe.IMAGE_FILE_MACHINE_AMD64,
 			NumberOfSections:     1, // .rsrc
 			TimeDateStamp:        0, // was also 0 in sample data from MinGW's windres.exe
 			NumberOfSymbols:      1,
