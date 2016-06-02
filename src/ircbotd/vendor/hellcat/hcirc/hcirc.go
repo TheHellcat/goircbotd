@@ -150,6 +150,40 @@ func (hcIrc *HcIrc) RegisterServerMessageHook(uid string, msgChannel chan Server
 /**
  *
  */
+func (hcIrc *HcIrc) UnregisterServerMessageHook(uid string) {
+    delete(srvMsgHooks, uid)
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) closeRegedServerMsgChannels() {
+    var ch chan ServerMessage
+    var id string
+
+    if hcIrc.Debugmode {
+        fmt.Printf("[IRCDEBUG] Closing remaining registered server message hook channels: ")
+    }
+
+    for id, ch = range srvMsgHooks {
+        if hcIrc.Debugmode {
+            fmt.Printf("%s ", id)
+        }
+        close(ch)
+    }
+
+    if hcIrc.Debugmode {
+        fmt.Printf("- DONE\n")
+    }
+
+    srvMsgHooks = nil
+}
+
+
+/**
+ *
+ */
 func (hcIrc *HcIrc) WaitForServerMessage() string {
     var s string
     var err error
@@ -452,6 +486,9 @@ func (hcIrc *HcIrc) Shutdown() {
         hcIrc.threadIds["inboundQueueRoutine"],
         hcIrc.threadIds["outboundQueueRoutine"],
         hcIrc.threadIds["outQuickQueueRoutine"]})
+
+    // close all registered server message hook channels, this should also tell loops to properly terminate
+    hcIrc.closeRegedServerMsgChannels()
 
     hcIrc.connection = nil
     hcIrc.reader = nil

@@ -30,7 +30,11 @@ func EnableWebsocketServer(hcIrc *hcirc.HcIrc, binding string) {
     wsHcIrc = hcIrc
     http.HandleFunc("/webchat", webchatHandler)
     fmt.Printf("(i) starting HTTP/Websockets listener\n")
+
+    initWebchat()
     listenAndServe(binding, nil)
+    shutdownWebchat()
+
     fmt.Printf("(i) HTTP/Websockets terminated\n")
     wsListener = nil
 }
@@ -64,7 +68,7 @@ func consEnableWs(cmd, param string) string {
     var r string
 
     if len(param) < 10 {
-        r = "You must provide a proper binding to listing on,\n e.g. 0.0.0.0:8000, 127.0.0.1:8000, 192.168.123.45:1234 or similar.\n"
+        r = "You must provide a proper binding to listing on,\n e.g. 0.0.0.0:8088, 127.0.0.1:8000, 192.168.123.45:1234 or similar.\n"
     } else {
         go EnableWebsocketServer(hcirc.Self, param)
         r = fmt.Sprintf("Enabling http/ws listener on %s\n", param)

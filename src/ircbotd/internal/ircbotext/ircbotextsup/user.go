@@ -41,6 +41,7 @@ func UsermanExtensionInit(hcIrc *hcirc.HcIrc) {
  */
 func UsermanExtensionShutdown(hcIrc *hcirc.HcIrc) {
     umanJoinHanRunning = false
+    hcIrc.UnregisterServerMessageHook("usermanagerextension")
     close(umanMsgChan)
     hcthreadutils.WaitForRoutinesEndById([]string{umanJoinHanThreadId })
     umanMsgChan = nil

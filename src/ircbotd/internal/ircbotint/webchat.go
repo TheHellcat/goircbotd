@@ -8,7 +8,79 @@ import (
     "time"
     "encoding/json"
     "strings"
+    "hellcat/hcthreadutils"
 )
+
+type wchatBufMsg struct {
+    channel string
+    nick    string
+    message string
+}
+
+var wchatBuf []wchatBufMsg
+var wchatBufCur int
+var wchatBufSize int
+var wchatBufThId string
+var wchatBufChId string
+var wchatMsgChan chan hcirc.ServerMessage
+
+
+/**
+ *
+ */
+func webchatHistoryBuffer() {
+    var msg hcirc.ServerMessage
+
+    wchatBufThId = hcthreadutils.GetRoutineId()
+    wchatBufChId = fmt.Sprintf("webchatHistoryBuffer-%s", wchatBufThId)
+
+    wchatBufSize = 100
+    wchatBufCur = 0
+    wchatBuf = make([]wchatBufMsg, wchatBufSize)
+
+    if wsHcIrc.Debugmode {
+        fmt.Printf("[WSCHATDEBUG] History buffering thread started (TID:%s)\n", wchatBufThId)
+    }
+
+    wchatMsgChan = make(chan hcirc.ServerMessage, wsHcIrc.QueueSize)
+    wsHcIrc.RegisterServerMessageHook(wchatBufChId, wchatMsgChan)
+
+    for msg = range wchatMsgChan {
+        wchatBuf[wchatBufCur].channel = msg.Channel
+        wchatBuf[wchatBufCur].nick = msg.Nick
+        wchatBuf[wchatBufCur].message = msg.Text
+
+        wchatBufCur++
+        if wchatBufCur == wchatBufSize {
+            wchatBufCur = 0
+        }
+    }
+
+    if wsHcIrc.Debugmode {
+        fmt.Printf("[WSCHATDEBUG] History buffering thread terminating (TID:%s)\n", wchatBufThId)
+    }
+}
+
+
+/**
+ *
+ */
+func initWebchat() {
+    go webchatHistoryBuffer()
+}
+
+
+/**
+ *
+ */
+func shutdownWebchat() {
+    wsHcIrc.UnregisterServerMessageHook(wchatBufChId)
+    close(wchatMsgChan)
+    if len(wchatBufThId) > 0 {
+        hcthreadutils.WaitForRoutinesEndById([]string{wchatBufThId})
+    }
+    wchatBufThId = ""
+}
 
 
 /**
@@ -72,6 +144,8 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
     var joinedChannels map[string]string
     var exists bool
     var a []string
+    var msgChanId string
+    var i int
 
     running = true
     clmsgid = 0
@@ -91,6 +165,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
     if wsHcIrc.Debugmode {
         fmt.Printf("[WSCHATDEBUG] Registered server-messages channel with ID %s\n", s)
     }
+    msgChanId = s
 
     // set up channel for receiving messages from webchat client
     inChan = make(chan string, wsHcIrc.QueueSize)
@@ -118,6 +193,34 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                 joinedChannels[a[1]] = a[1]
                 if wsHcIrc.Debugmode {
                     fmt.Printf("[WSCHATDEBUG] %s subscribed to channel %s\n", myId, a[1])
+                }
+                i = wchatBufCur + 2
+                if wsHcIrc.Debugmode {
+                    fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] Sending buffer to client for channel %s\n", a[1])
+                }
+                for i != wchatBufCur + 1 {
+                    if a[1] == wchatBuf[i].channel && len(wchatBuf[i].message) > 0 {
+                        s = fmt.Sprintf("hist%d", i)
+                        clientMsg["type"] = "chatmessage"
+                        clientMsg["id"] = s
+                        clientMsg["cssClass"] = "chatmessage"
+                        clientMsg["nick"] = wchatBuf[i].nick
+                        clientMsg["text"] = wchatBuf[i].message
+                        ba, err = json.Marshal(clientMsg)
+                        if err != nil {
+                            if wsHcIrc.Debugmode {
+                                fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] ERROR encoding JSON for client: %s\n", err.Error())
+                            }
+                        }
+                        _ = conn.WriteMessage(websocket.TextMessage, ba)
+                    }
+                    i++
+                    if i == wchatBufSize {
+                        i = 0
+                    }
+                }
+                if wsHcIrc.Debugmode {
+                    fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] Done sending buffer to client\n")
                 }
             }
             if "PART" == a[0] {
@@ -164,6 +267,9 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
             }
         }
     }
+
+    hcIrc.UnregisterServerMessageHook(msgChanId)
+    close(msgChan)
 
     if wsHcIrc.Debugmode {
         fmt.Printf("[WSCHATDEBUG] Connection handler terminated: %s\n", myId)
