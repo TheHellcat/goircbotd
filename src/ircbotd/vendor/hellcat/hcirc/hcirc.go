@@ -24,6 +24,7 @@ type ServerMessage struct {
     Host    string
     Text    string
     Raw     string
+    Tags    string
 }
 
 type HcIrc struct {
@@ -54,6 +55,7 @@ type HcIrc struct {
     channelUsers         map[string]userlist
     threadIds            map[string]string
     dataDir              string
+    twitchMode           bool
 
     Error                string
 }
@@ -100,6 +102,7 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         threadIds: make(map[string]string),
         JoinedChannels: make(map[string]string),
         dataDir: "./",
+        twitchMode: false,
     }
     return Self
 }
@@ -121,6 +124,15 @@ func (hcIrc *HcIrc) GetDataDir() string {
  */
 func (hcIrc *HcIrc) SetRealname(name string) {
     hcIrc.name = name
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) EnableTwitchMode() {
+    hcIrc.twitchMode = true
+    hcIrc.debugPrint("Enabling Twitch compatibility mode", "")
 }
 
 
@@ -179,8 +191,7 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
     var s string
     var i int
     var source string
-    var msgChan chan ServerMessage
-    var srvMsg ServerMessage
+    var tags string
 
     text = ""
     command = ""
@@ -193,7 +204,15 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
         return command, channel, nick, user, host, text
     }
 
+    if message[0:1] == "@" {
+        // message contains Twitch tags, strip and separately parse them
+        s1 = strings.SplitN(message, " ", 2)
+        message = s1[1]
+        tags = s1[0]
+    }
+
     if message[0:1] == ":" {
+        // message contains a source
         s1 = strings.SplitN(message, " ", 2)
         message = s1[1]
         source = s1[0]
@@ -241,27 +260,47 @@ func (hcIrc *HcIrc) ParseMessage(message string) (command, channel, nick, user, 
 
     command = strings.ToUpper(command)
 
+    if "WHISPER" == command {
+        // transparently convert Twitch "whispers" to IRC queries / PMs
+        command = "PRIVMSG"  // that's pretty much it, lol. Why do they send it as "WHIPSER" in the first place?
+        hcIrc.debugPrint("TWITCH mode:", "converted whisper to query/PM")
+    }
+
     s = fmt.Sprintf("Parsed command '%s' with channel=%s, nick=%s, user=%s, host=%s (source=%s)", command, channel, nick, user, host, source)
     hcIrc.debugPrint(s, "")
+
+    if hcIrc.twitchMode {
+        user = fmt.Sprintf("%s:%s", user, tags)
+    }
 
     if hcIrc.AutohandleSysMsgs {
         hcIrc.HandleSystemMessages(command, channel, nick, user, host, text, message)
     }
 
-    // send raw message to all registered receivers
-    for _, msgChan = range srvMsgHooks {
-        srvMsg.Command = command
-        srvMsg.Channel = channel
-        srvMsg.Nick = nick
-        srvMsg.User = user
-        srvMsg.Host = host
-        srvMsg.Text = text
-        srvMsg.Raw = message
-        msgChan <- srvMsg
-    }
-
     return command, channel, nick, user, host, text
 
+}
+
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) UnserializeMsgTags(tags string) map[string]string {
+    var returnData map[string]string
+    var tagArray []string
+    var tagData []string
+    var s string
+
+    returnData = make(map[string]string)
+    tags = tags[1:]
+
+    tagArray = strings.Split(tags, ";")
+    for _, s = range tagArray {
+        tagData = strings.Split(s, "=")
+        returnData[tagData[0]] = tagData[1]
+    }
+
+    return returnData
 }
 
 
@@ -274,6 +313,9 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
     var i int
     var a []string
     var b bool
+    var msgChan chan ServerMessage
+    var srvMsg ServerMessage
+    var tags string
 
     // keepalive pings from the server
     if command == "PING" {
@@ -331,6 +373,25 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
     if "MODE" == command {
         hcIrc.changeUserMode(channel, nick, raw)
     }
+
+    // send raw message to all registered receivers
+    for _, msgChan = range srvMsgHooks {
+        if hcIrc.twitchMode {
+            // get separate user and tags for Twitch compatibility
+            a = strings.Split(user, ":")
+            user = a[0]
+            tags = a[1]
+        }
+        srvMsg.Command = command
+        srvMsg.Channel = channel
+        srvMsg.Nick = nick
+        srvMsg.User = user
+        srvMsg.Host = host
+        srvMsg.Text = text
+        srvMsg.Raw = raw
+        srvMsg.Tags = tags
+        msgChan <- srvMsg
+    }
 }
 
 
@@ -338,6 +399,36 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
  *
  */
 func (hcIrc *HcIrc) SendToServer(message string) {
+    var orgAutohandle bool
+    var command, channel, text string
+
+    if hcIrc.twitchMode {
+        // we're having Twitch compatibility mode enabled, translate query/PM to proper "whisper"
+
+        // first remember the current "automatically handle system messages" setting
+        orgAutohandle = hcIrc.AutohandleSysMsgs
+
+        // now prevent Parse() to trigger handling system messages
+        hcIrc.AutohandleSysMsgs = false
+
+        command, channel, _, _, _, text = hcIrc.ParseMessage(message)
+
+        // restore original auto-handle setting
+        hcIrc.AutohandleSysMsgs = orgAutohandle
+
+        // is it a query/PM?
+        if "PRIVMSG" == strings.ToUpper(command) {
+            if len(text) > 1 {
+                if "#" != text[0:1] {
+                    // we got some text for a PRIVMSG and it's not a channel (not starting with "#",
+                    // so this goes to a user as query/PM, let's reformat this for Twitch
+                    message = fmt.Sprintf("PRIVMSG jtv :/w %s %s", channel, text)
+                    hcIrc.debugPrint("TWITCH mode:", "converted query/PM to whisper")
+                }
+            }
+        }
+    }
+
     hcIrc.debugPrint("  to server <<<", message)
     message = strings.Replace(message, string('\n'), "", -1)
     message = strings.Replace(message, string('\r'), "", -1)
@@ -400,7 +491,7 @@ func (hcIrc *HcIrc) Connect() {
     hcIrc.reader = reader
 
     // wait for first message from server
-    hcIrc.WaitForServerMessage()
+    //hcIrc.WaitForServerMessage()
 
     // login/register with server
     if len(hcIrc.pass) > 1 {
@@ -423,6 +514,14 @@ func (hcIrc *HcIrc) Connect() {
     }
 
     hcIrc.debugPrint("Connection: Registered with server", "")
+
+    if hcIrc.twitchMode {
+        hcIrc.debugPrint("Requesting Twitch capabilities:", "commands membership tags")
+        hcIrc.SendToServer("CAP REQ twitch.tv/commands")
+        hcIrc.SendToServer("CAP REQ twitch.tv/membership")
+        hcIrc.SendToServer("CAP REQ twitch.tv/tags")
+        hcIrc.FloodThrottle = 3 // this is a more save default for Twitch, as the limit is 20 msgs per 30 secs.
+    }
 
 }
 

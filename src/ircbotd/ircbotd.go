@@ -37,6 +37,7 @@ var cmdArgStandalone string
 var cmdArgWebsocketBind string
 var cmdArgWebsocketEnabled bool
 var cmdArgDatadir string
+var cmdArgTwitchmode bool
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -58,6 +59,7 @@ func init() {
     flag.BoolVar(&cmdArgWebsocketEnabled, "ws", false, "Enable listening for incomming http/websocket connections")
     flag.StringVar(&cmdArgWebsocketBind, "wsbind", "0.0.0.0:8088", "Listen binding for incomming http/websocket connections (defaults to 0.0.0.0:8088)")
     flag.StringVar(&cmdArgDatadir, "datadir", ".", "Directory to save datafiles. Defaults to current dir.")
+    flag.BoolVar(&cmdArgTwitchmode, "twitch", false, "Enables 'Twitch-Mode', activates special compatibility with Twitch features")
 }
 
 
@@ -355,7 +357,12 @@ func main() {
         a[2] = fmt.Sprintf("--base=%s", cmdArgUrl)
         a[3] = fmt.Sprintf("--standalone=%s", cmdArgStandalone)
         a[4] = fmt.Sprintf("--wsbind=%s", cmdArgWebsocketBind)
-        cmd = exec.Command(os.Args[0], a[0], a[1], a[2], a[3], a[4])
+        if cmdArgTwitchmode {
+            a[5] = "--twitch"
+        } else {
+            a[5] = "--twitch=0"
+        }
+        cmd = exec.Command(os.Args[0], a[0], a[1], a[2], a[3], a[4], a[5])
         err = cmd.Start()
         if err != nil {
             fmt.Printf("Error launching to background: %s\n\n", err.Error())
@@ -391,6 +398,10 @@ func main() {
         hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
         hcIrc.SetDataDir(cmdArgDatadir)
+        if cmdArgTwitchmode {
+            hcIrc.EnableTwitchMode()
+        }
+
         hcIrc.Connect()
         if len(hcIrc.Error) == 0 {
 
