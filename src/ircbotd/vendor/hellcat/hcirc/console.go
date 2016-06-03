@@ -51,6 +51,7 @@ func (hcIrc *HcIrc) StartConsole(ctrlChan chan string, ioRead io.Reader, ioWrite
         ioWriter.WriteString(output)
         ioWriter.Flush()
         input, err = ioReader.ReadString('\n')
+        input = strings.Replace( input, string('\r'), "", -1 )  // This one's for Windows
         input = strings.Trim(input, string('\n'))
         input = strings.Trim(input, " ")
         inputLowered = strings.ToLower(input)
