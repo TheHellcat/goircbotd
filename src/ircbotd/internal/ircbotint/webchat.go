@@ -14,6 +14,7 @@ import (
 type wchatBufMsg struct {
     channel string
     nick    string
+    nickId  string
     message string
 }
 
@@ -30,6 +31,7 @@ var wchatMsgChan chan hcirc.ServerMessage
  */
 func webchatHistoryBuffer() {
     var msg hcirc.ServerMessage
+    var i int
 
     wchatBufThId = hcthreadutils.GetRoutineId()
     wchatBufChId = fmt.Sprintf("webchatHistoryBuffer-%s", wchatBufThId)
@@ -46,13 +48,22 @@ func webchatHistoryBuffer() {
     wsHcIrc.RegisterServerMessageHook(wchatBufChId, wchatMsgChan)
 
     for msg = range wchatMsgChan {
-        wchatBuf[wchatBufCur].channel = msg.Channel
-        wchatBuf[wchatBufCur].nick = msg.Nick
-        wchatBuf[wchatBufCur].message = msg.Text
+        if "PRIVMSG" == msg.Command {
+            wchatBuf[wchatBufCur].channel = msg.Channel
+            wchatBuf[wchatBufCur].nick = msg.Nick
+            wchatBuf[wchatBufCur].nickId = wsHcIrc.NormalizeNick( msg.Nick )
+            wchatBuf[wchatBufCur].message = msg.Text
 
-        wchatBufCur++
-        if wchatBufCur == wchatBufSize {
-            wchatBufCur = 0
+            wchatBufCur++
+            if wchatBufCur == wchatBufSize {
+                wchatBufCur = 0
+            }
+        } else if "CLEARCHAT" == msg.Command {
+            for i=0; i<wchatBufSize; i++ {
+                if wsHcIrc.NormalizeNick( msg.Text ) == wchatBuf[i].nickId {
+                    wchatBuf[i].message = ""
+                }
+            }
         }
     }
 
@@ -205,6 +216,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                         clientMsg["id"] = s
                         clientMsg["cssClass"] = "chatmessage"
                         clientMsg["nick"] = wchatBuf[i].nick
+                        clientMsg["nickid"] =  wchatBuf[i].nickId
                         clientMsg["text"] = wchatBuf[i].message
                         ba, err = json.Marshal(clientMsg)
                         if err != nil {
@@ -252,6 +264,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     clientMsg["id"] = fmt.Sprintf("msg%d", clmsgid)
                     clientMsg["cssClass"] = "chatmessage"
                     clientMsg["nick"] = nick
+                    clientMsg["nickid"] = wsHcIrc.NormalizeNick( nick )
                     clientMsg["text"] = text
                     ba, err = json.Marshal(clientMsg)
                     if err != nil {
@@ -261,7 +274,27 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     }
                     err = conn.WriteMessage(websocket.TextMessage, ba)
                     if err != nil {
-                        // TODO: Handle error
+                        if wsHcIrc.Debugmode {
+                            fmt.Printf("[WSCHATDEBUG] ERROR sending JSON to client: %s\n", err.Error())
+                        }
+                    }
+                }
+            } else if "CLEARCHAT" == command {
+                _, exists = joinedChannels[channel]
+                if exists {
+                    clientMsg["type"] = "clearchat"
+                    clientMsg["nickid"] = wsHcIrc.NormalizeNick( text )
+                    ba, err = json.Marshal(clientMsg)
+                    if err != nil {
+                        if wsHcIrc.Debugmode {
+                            fmt.Printf("[WSCHATDEBUG] ERROR encoding JSON for client: %s\n", err.Error())
+                        }
+                    }
+                    err = conn.WriteMessage(websocket.TextMessage, ba)
+                    if err != nil {
+                        if wsHcIrc.Debugmode {
+                            fmt.Printf("[WSCHATDEBUG] ERROR sending JSON to client: %s\n", err.Error())
+                        }
                     }
                 }
             }

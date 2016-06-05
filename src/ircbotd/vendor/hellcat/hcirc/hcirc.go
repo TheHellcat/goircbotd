@@ -414,7 +414,11 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
             // get separate user and tags for Twitch compatibility
             a = strings.Split(user, ":")
             user = a[0]
-            tags = a[1]
+            if len(a) > 1 {
+                tags = a[1]
+            } else {
+                tags =""
+            }
         }
         srvMsg.Command = command
         srvMsg.Channel = channel
@@ -452,8 +456,8 @@ func (hcIrc *HcIrc) SendToServer(message string) {
 
         // is it a query/PM?
         if "PRIVMSG" == strings.ToUpper(command) {
-            if len(text) > 1 {
-                if "#" != text[0:1] {
+            if len(channel) > 1 {
+                if "#" != channel[0:1] {
                     // we got some text for a PRIVMSG and it's not a channel (not starting with "#",
                     // so this goes to a user as query/PM, let's reformat this for Twitch
                     message = fmt.Sprintf("PRIVMSG jtv :/w %s %s", channel, text)

@@ -238,7 +238,7 @@ func (hcIrc *HcIrc) stripUsermodeChars(nick string) string {
     var regex *regexp.Regexp
     var s string
 
-    regex, err = regexp.Compile("[^A-Za-z0-9]")
+    regex, err = regexp.Compile("[^A-Za-z0-9-_]")
     if err == nil {
         s = regex.ReplaceAllString(nick, "")
     } else {

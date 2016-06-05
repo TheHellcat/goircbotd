@@ -16,6 +16,7 @@ import (
  */
 func InitExtensions(hcIrc *hcirc.HcIrc) {
     ircbotextmisc.SampleExtensionInit(hcIrc)
+    ircbotextmisc.DbgHelpExtensionInit(hcIrc)
     ircbotextsup.SupportExtensionInit(hcIrc)
     ircbotextsup.UsermanExtensionInit(hcIrc)
 }
@@ -30,6 +31,7 @@ func InitExtensions(hcIrc *hcirc.HcIrc) {
  */
 func ShutdownExtensions(hcIrc *hcirc.HcIrc) {
     ircbotextmisc.SampleExtensionShutdown(hcIrc)
+    ircbotextmisc.DbgHelpExtensionShutdown(hcIrc)
     ircbotextsup.SupportExtensionShutdown(hcIrc)
     ircbotextsup.UsermanExtensionShutdown(hcIrc)
 }
