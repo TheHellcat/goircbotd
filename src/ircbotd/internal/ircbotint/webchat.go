@@ -16,6 +16,7 @@ type wchatBufMsg struct {
     nick    string
     nickId  string
     message string
+    tags    string
 }
 
 var wchatBuf []wchatBufMsg
@@ -53,6 +54,7 @@ func webchatHistoryBuffer() {
             wchatBuf[wchatBufCur].nick = msg.Nick
             wchatBuf[wchatBufCur].nickId = wsHcIrc.NormalizeNick( msg.Nick )
             wchatBuf[wchatBufCur].message = msg.Text
+            wchatBuf[wchatBufCur].tags = msg.Tags
 
             wchatBufCur++
             if wchatBufCur == wchatBufSize {
@@ -137,7 +139,7 @@ func webchatClientReceiver(conn *websocket.Conn, inChan chan string) {
 /**
  *
  */
-func generateWebchatJSON( text, id, nick, nickId string ) []byte {
+func generateWebchatJSON( text, id, nick, nickId, tags string ) []byte {
     var msgType string
     var msgCss string
     var clientMsg map[string]string
@@ -260,7 +262,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     if a[1] == wchatBuf[i].channel && len(wchatBuf[i].message) > 0 {
                         s = fmt.Sprintf("hist%d", i)
 
-                        ba = generateWebchatJSON( wchatBuf[i].message, s, wchatBuf[i].nick, wchatBuf[i].nickId )
+                        ba = generateWebchatJSON( wchatBuf[i].message, s, wchatBuf[i].nick, wchatBuf[i].nickId, wchatBuf[i].tags )
 
                         _ = conn.WriteMessage(websocket.TextMessage, ba)
                     }
@@ -300,7 +302,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     }
 
                     s = fmt.Sprintf("msg%d", clmsgid)
-                    ba = generateWebchatJSON( text, s, nick, "" )
+                    ba = generateWebchatJSON( text, s, nick, "", srvMsg.Tags )
 
                     err = conn.WriteMessage(websocket.TextMessage, ba)
                     if err != nil {
