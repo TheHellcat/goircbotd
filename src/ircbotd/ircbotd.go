@@ -88,7 +88,7 @@ func fetchMainConfig() (bool, string) {
     } else {
         if len(cmdArgUrl) > 10 {
             ircbotint.SetHttpUrl(cmdArgUrl)
-            rJson, err = ircbotint.CallHttp("getmainconfig", "")
+            rJson, err = ircbotint.CallHttp( []string{"getmainconfig"} )
             if err == nil {
                 ok = true
             } else {
@@ -164,7 +164,7 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson, err = ircbotint.CallHttp("getchatcommands", "")
+    sJson, err = ircbotint.CallHttp( []string{"getchatcommands"} )
     if err != nil {
         fmt.Printf("(!) ERROR fetching chat commands: %s\n", err.Error())
         return
