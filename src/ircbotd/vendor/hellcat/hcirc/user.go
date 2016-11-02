@@ -26,6 +26,26 @@ func (hcIrc *HcIrc) RemoveUserFromChannel(channel, nick string) {
 /**
  *
  */
+func (hcIrc *HcIrc) GetChannelUserMode(channel, nick string) string {
+    var uList userlist
+    var exists bool
+    var nickModes string
+
+    nickModes = ""
+    uList, exists = hcIrc.channelUsers[channel]
+    nick = hcIrc.NormalizeNick(nick)
+
+    if exists {
+        nickModes = hcIrc.getUsermodeChars(uList[nick])
+    }
+
+    return nickModes
+}
+
+
+/**
+ *
+ */
 func (hcIrc *HcIrc) GetChannelUsers(channel string) map[string]Userinfo {
     var uList userlist
     var uInfoList map[string]Userinfo

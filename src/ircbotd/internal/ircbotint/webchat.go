@@ -50,9 +50,14 @@ func webchatHistoryBuffer() {
 
     for msg = range wchatMsgChan {
         if "PRIVMSG" == msg.Command {
+            if ( hcIrc.IsTwitchModeEnabled() ) {
+                wchatBuf[wchatBufCur].nick = msg.Nick
+            } else {
+                wchatBuf[wchatBufCur].nick = fmt.Sprintf("%s%s", msg.NickMode, msg.Nick)
+            }
+
             wchatBuf[wchatBufCur].channel = msg.Channel
-            wchatBuf[wchatBufCur].nick = msg.Nick
-            wchatBuf[wchatBufCur].nickId = wsHcIrc.NormalizeNick( msg.Nick )
+            wchatBuf[wchatBufCur].nickId = wsHcIrc.NormalizeNick(msg.Nick)
             wchatBuf[wchatBufCur].message = msg.Text
             wchatBuf[wchatBufCur].tags = msg.Tags
 
@@ -61,8 +66,8 @@ func webchatHistoryBuffer() {
                 wchatBufCur = 0
             }
         } else if "CLEARCHAT" == msg.Command {
-            for i=0; i<wchatBufSize; i++ {
-                if wsHcIrc.NormalizeNick( msg.Text ) == wchatBuf[i].nickId {
+            for i = 0; i < wchatBufSize; i++ {
+                if wsHcIrc.NormalizeNick(msg.Text) == wchatBuf[i].nickId {
                     wchatBuf[i].message = ""
                 }
             }
@@ -139,12 +144,17 @@ func webchatClientReceiver(conn *websocket.Conn, inChan chan string) {
 /**
  *
  */
-func generateWebchatJSON( text, id, nick, nickId, tags string ) []byte {
+func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     var msgType string
     var msgCss string
     var clientMsg map[string]string
     var ba []byte
     var err error
+    var tagList map[string]string
+    var emotes map[int]hcirc.TwitchMsgEmoteInfo
+    var emoteCount int
+    var i int
+    var s string
 
     clientMsg = make(map[string]string)
 
@@ -160,9 +170,20 @@ func generateWebchatJSON( text, id, nick, nickId, tags string ) []byte {
         }
     }
 
+    if ( hcIrc.IsTwitchModeEnabled() ) {
+        tagList = hcIrc.ParseTwitchTags(tags)
+        emotes, emoteCount = hcIrc.ParseTwitchEmoteTag(tagList["emotes"])
+
+        s = text
+        for i = 0; i < emoteCount; i++ {
+            s = fmt.Sprintf("%s <img src=\"%s\" /> %s", s[:emotes[i].From], emotes[i].ChatUrl, s[emotes[i].To + 1:])
+        }
+        text = s
+    }
+
     // if no nickId was supplied, generate one
     if len(nickId) < 1 {
-        nickId = wsHcIrc.NormalizeNick( nick )
+        nickId = wsHcIrc.NormalizeNick(nick)
     }
 
     // build final JSON to be sent to web client
@@ -262,7 +283,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     if a[1] == wchatBuf[i].channel && len(wchatBuf[i].message) > 0 {
                         s = fmt.Sprintf("hist%d", i)
 
-                        ba = generateWebchatJSON( wchatBuf[i].message, s, wchatBuf[i].nick, wchatBuf[i].nickId, wchatBuf[i].tags )
+                        ba = generateWebchatJSON(wchatBuf[i].message, s, wchatBuf[i].nick, wchatBuf[i].nickId, wchatBuf[i].tags)
 
                         _ = conn.WriteMessage(websocket.TextMessage, ba)
                     }
@@ -302,7 +323,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     }
 
                     s = fmt.Sprintf("msg%d", clmsgid)
-                    ba = generateWebchatJSON( text, s, nick, "", srvMsg.Tags )
+                    ba = generateWebchatJSON(text, s, nick, "", srvMsg.Tags)
 
                     err = conn.WriteMessage(websocket.TextMessage, ba)
                     if err != nil {
@@ -315,7 +336,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                 _, exists = joinedChannels[channel]
                 if exists {
                     clientMsg["type"] = "clearchat"
-                    clientMsg["nickId"] = wsHcIrc.NormalizeNick( text )
+                    clientMsg["nickId"] = wsHcIrc.NormalizeNick(text)
                     ba, err = json.Marshal(clientMsg)
                     if err != nil {
                         if wsHcIrc.Debugmode {
