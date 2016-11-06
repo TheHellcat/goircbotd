@@ -140,6 +140,7 @@ func (hcIrc *HcIrc) SetRealname(name string) {
  */
 func (hcIrc *HcIrc) EnableTwitchMode() {
     hcIrc.twitchMode = true
+    fmt.Printf("Running in Twitch mode.\n")
     hcIrc.debugPrint("Enabling Twitch compatibility mode", "")
 }
 
