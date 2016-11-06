@@ -89,8 +89,6 @@ func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
 
         twitchBadges = make(map[string]map[string]TwitchBadgeType)
 
-        //jsonString = "{\"badge_sets\":{\"admin\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/3\",\"description\":\"TwitchAdmin\",\"title\":\"TwitchAdmin\",\"click_action\":\"none\",\"click_url\":\"\"}}},\"bits\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/3\",\"description\":\"\",\"title\":\"cheer1\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"},\"100\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/3\",\"description\":\"\",\"title\":\"cheer100\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"}}}}}"
-        //jsonString = "{\"badge_sets\":{\"admin\":\"test\",\"bits\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/3\",\"description\":\"\",\"title\":\"cheer1\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"},\"100\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/3\",\"description\":\"\",\"title\":\"cheer100\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"}}}}}"
         jsonString, _ = callHttp("http://badges.twitch.tv/v1/badges/global/display")
         jsonDecoder = json.NewDecoder(strings.NewReader(jsonString))
 
@@ -145,9 +143,15 @@ func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
     }
 }
 
+// https://badges.twitch.tv/v1/badges/channels/<room-id>/display
+/**
+ *
+ */
+func (hcIrc *HcIrc) fetchTwitchBadgesChannel(channelId string) {
+}
+
 
 // https://discuss.dev.twitch.tv/t/beta-badge-api/6388
-// sim-srvmsg @badges=broadcaster/1;color=;display-name=lazy_idler;emotes=1:14-18,25:4-8;mod=0;room-id=117085959;subscriber=0;turbo=0;user-id=117085959;user-type= :TestCat!TestCat@TestCat.tmi.twitch.tv PRIVMSG #test :123 Kappa 456 Kappa 789
 /**
  *
  */
