@@ -7,15 +7,45 @@ import (
     "sort"
     "encoding/json"
     "reflect"
+    "net/http"
+    "io/ioutil"
 )
 
-type twitchBadgeType struct {
-    imageUrl    string
-    description string
-    title       string
+type TwitchBadgeType struct {
+    ImageUrl    string
+    Description string
+    Title       string
+    Version     string
 }
 
-var twitchBadges map[string]map[string]twitchBadgeType
+var twitchBadges map[string]map[string]TwitchBadgeType
+
+
+/**
+ *
+ */
+func callHttp(url string) (string, error) {
+    var r *http.Response
+    var err error
+    var s string
+    var ba []byte
+
+    r, err = http.Get(url)
+    if err != nil {
+        return "", err
+    }
+
+    ba, err = ioutil.ReadAll(r.Body)
+    r.Body.Close()
+
+    if err != nil {
+        return "", err
+    }
+
+    s = string(ba)
+
+    return s, nil
+}
 
 
 /**
@@ -27,6 +57,7 @@ func (hcIrc *HcIrc) ParseTwitchTags(tags string) map[string]string {
     var tagData []string
 
     tagList = make(map[string]string)
+    tags = strings.Replace(tags, "@", "", -1)
 
     for _, tag = range strings.Split(tags, ";") {
         tagData = strings.Split(tag, "=")
@@ -48,7 +79,7 @@ func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
     var jsonString string
     var jsonDecoder *json.Decoder
     var jMap interface{}
-    var badgeData twitchBadgeType
+    var badgeData TwitchBadgeType
     var err error
     var badgeCount int
 
@@ -56,10 +87,11 @@ func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
         hcIrc.debugPrint("[TWITCHSUPPORT] fetching user badge data from Twitch", "")
         badgeCount = 0
 
-        twitchBadges = make(map[string]map[string]twitchBadgeType)
+        twitchBadges = make(map[string]map[string]TwitchBadgeType)
 
-        jsonString = "{\"badge_sets\":{\"admin\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/3\",\"description\":\"TwitchAdmin\",\"title\":\"TwitchAdmin\",\"click_action\":\"none\",\"click_url\":\"\"}}},\"bits\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/3\",\"description\":\"\",\"title\":\"cheer1\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"},\"100\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/3\",\"description\":\"\",\"title\":\"cheer100\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"}}}}}"
+        //jsonString = "{\"badge_sets\":{\"admin\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/9ef7e029-4cdf-4d4d-a0d5-e2b3fb2583fe/3\",\"description\":\"TwitchAdmin\",\"title\":\"TwitchAdmin\",\"click_action\":\"none\",\"click_url\":\"\"}}},\"bits\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/3\",\"description\":\"\",\"title\":\"cheer1\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"},\"100\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/3\",\"description\":\"\",\"title\":\"cheer100\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"}}}}}"
         //jsonString = "{\"badge_sets\":{\"admin\":\"test\",\"bits\":{\"versions\":{\"1\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/73b5c3fb-24f9-4a82-a852-2f475b59411c/3\",\"description\":\"\",\"title\":\"cheer1\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"},\"100\":{\"image_url_1x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/1\",\"image_url_2x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/2\",\"image_url_4x\":\"https://static-cdn.jtvnw.net/badges/v1/09d93036-e7ce-431c-9a9e-7044297133f2/3\",\"description\":\"\",\"title\":\"cheer100\",\"click_action\":\"visit_url\",\"click_url\":\"https://blog.twitch.tv/introducing-cheering-celebrate-together-da62af41fac6\"}}}}}"
+        jsonString, _ = callHttp("http://badges.twitch.tv/v1/badges/global/display")
         jsonDecoder = json.NewDecoder(strings.NewReader(jsonString))
 
         err = jsonDecoder.Decode(&jMap)
@@ -73,25 +105,26 @@ func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
                                     for kSet, vSet := range vSets.(map[string]interface{}) {
                                         if ( "versions" == kSet ) {
                                             if ( reflect.TypeOf(vSet).String() == "map[string]interface {}") {
-                                                t := make(map[string]twitchBadgeType)
+                                                t := make(map[string]TwitchBadgeType)
                                                 for kVer, vVer := range vSet.(map[string]interface{}) {
                                                     if ( reflect.TypeOf(vVer).String() == "map[string]interface {}") {
-                                                        badgeData.imageUrl = ""
-                                                        badgeData.description = ""
-                                                        badgeData.title = ""
+                                                        badgeData.ImageUrl = ""
+                                                        badgeData.Description = ""
+                                                        badgeData.Title = ""
                                                         for kDat, vDat := range vVer.(map[string]interface{}) {
                                                             if ( reflect.TypeOf(vDat).String() == "string") {
                                                                 if ("image_url_1x" == kDat) {
-                                                                    badgeData.imageUrl = vDat.(string)
+                                                                    badgeData.ImageUrl = vDat.(string)
                                                                 }
                                                                 if ("title" == kDat) {
-                                                                    badgeData.title = vDat.(string)
+                                                                    badgeData.Title = vDat.(string)
                                                                 }
                                                                 if ("description" == kDat) {
-                                                                    badgeData.description = vDat.(string)
+                                                                    badgeData.Description = vDat.(string)
                                                                 }
                                                             }
                                                         }
+                                                        badgeData.Version = kVer
                                                         t[kVer] = badgeData
                                                     }
                                                 }
@@ -118,15 +151,35 @@ func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
 /**
  *
  */
-//func (hcIrc *HcIrc) ParseTwitchBadgesTag(badgesTag string) (badgesList map[string]string, count int) {
-//var c int
-//
-//badgesList = make(map[string]string)
-//
-//for _, badge = range strings.Split(badgesTag, ",") {
-//    badgeData = strings.Split(badge, "/")
-//}
-//}
+func (hcIrc *HcIrc) ParseTwitchBadgesTag(badgesTag string) (badgesList map[int]TwitchBadgeType, count int) {
+    var c int
+    var a []string
+    var b []string
+    var s string
+    var v string
+    var n string
+
+    badgesList = make(map[int]TwitchBadgeType)
+    c = 0
+
+    hcIrc.fetchTwitchBadgesGlobal()
+
+    a = strings.Split(badgesTag, ",")
+    for _, s = range a {
+        b = strings.Split(s, "/")
+        v = "1"
+        if (len(b) > 1) {
+            v = b[1]
+        }
+        n = b[0]
+
+        badgesList[c] = twitchBadges[n][v]
+        c++
+    }
+
+    count = c
+    return badgesList, count
+}
 
 
 /**
@@ -152,7 +205,7 @@ func (hcIrc *HcIrc) ParseTwitchEmoteTag(emoteTag string) (emoteList map[int]Twit
     for _, emote = range strings.Split(emoteTag, ",") {
         emoteData = strings.Split(emote, ":")
         emoteInfo.Id, _ = strconv.Atoi(emoteData[0])
-        emoteData = strings.Split(emoteData[1], "-")
+        emoteData = strings.Split(emoteData[1], "-")  // TODO: check if index "1" exists
         emoteInfo.From, _ = strconv.Atoi(emoteData[0])
         emoteInfo.To, _ = strconv.Atoi(emoteData[1])
         emoteInfo.ChatUrl = fmt.Sprintf("https://static-cdn.jtvnw.net/emoticons/v1/%d/1.0", emoteInfo.Id)

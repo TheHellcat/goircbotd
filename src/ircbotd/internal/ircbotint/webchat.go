@@ -155,6 +155,8 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     var emoteCount int
     var i int
     var s string
+    var badges map[int]hcirc.TwitchBadgeType
+    var badgeCount int
 
     clientMsg = make(map[string]string)
 
@@ -173,13 +175,21 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     if ( hcIrc.IsTwitchModeEnabled() ) {
         tagList = hcIrc.ParseTwitchTags(tags)
         emotes, emoteCount = hcIrc.ParseTwitchEmoteTag(tagList["emotes"])
-        //badges, badgeCount = hcIrc.ParseTwitchBadgesTag(tagList["badges"])
+        badges, badgeCount = hcIrc.ParseTwitchBadgesTag(tagList["badges"])
+        nick = tagList["display-name"]
 
         s = text
         for i = 0; i < emoteCount; i++ {
-            s = fmt.Sprintf("%s <img src=\"%s\" /> %s", s[:emotes[i].From], emotes[i].ChatUrl, s[emotes[i].To + 1:])
+            s = fmt.Sprintf("%s <img src=\"%s\" alt=\"\" class=\"chatEmote\" /> %s", s[:emotes[i].From], emotes[i].ChatUrl, s[emotes[i].To + 1:])
         }
         text = s
+
+        s = ""
+        for i = 0; i < badgeCount; i++ {
+            s = fmt.Sprintf("%s<img src=\"%s\" alt=\"%s\" class=\"chatUserBadge\" /> ", s, badges[i].ImageUrl, badges[i].Title)
+        }
+        s = fmt.Sprintf("%s%s", s, nick)
+        nick = s
     }
 
     // if no nickId was supplied, generate one
