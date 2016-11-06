@@ -83,6 +83,7 @@ func fetchMainConfig() (bool, string) {
         runningStandalone = true
     }
 
+    ircbotint.SetHttpUrl(cmdArgUrl)
     if runningStandalone {
         // TODO: load config from file
     } else {
@@ -372,6 +373,10 @@ func main() {
         return
     }
 
+    if cmdArgTwitchmode {
+        fmt.Printf("\nKappa!\n\n")
+    }
+
     // set up main control channel for communication from all worker-threads
     mainCtrl = make(chan string, 1)
 
@@ -379,9 +384,6 @@ func main() {
 
         // flag to keep all worker threads running or tell them to exit
         running = true
-
-        // fetch main config from parent application
-        // TODO: fetch main config
 
         // init some stuff
         regedChatCommands = make(map[string]string)
@@ -398,6 +400,8 @@ func main() {
         hcIrc.SetRealname(mainConfig.botRealname)
         hcIrc.Debugmode = cmdArgDebug
         hcIrc.SetDataDir(cmdArgDatadir)
+
+        // enable Twitch mode, if requested
         if cmdArgTwitchmode {
             hcIrc.EnableTwitchMode()
         }

@@ -6,8 +6,6 @@ import (
     "bufio"
     "strings"
     "hellcat/hcthreadutils"
-    "strconv"
-    "sort"
 )
 
 type userlist map[string]string
@@ -491,74 +489,6 @@ func (hcIrc *HcIrc) SendToServer(message string) {
     message = fmt.Sprintf("%s\n", message)
     hcIrc.writer.WriteString(message)
     hcIrc.writer.Flush()
-}
-
-
-/**
- *
- */
-func (hcIrc *HcIrc) ParseTwitchTags(tags string) map[string]string {
-    var tagList map[string]string
-    var tag string
-    var tagData []string
-
-    tagList = make(map[string]string)
-
-    for _, tag = range strings.Split(tags, ";") {
-        tagData = strings.Split(tag, "=")
-        if (len(tagData) == 2) {
-            tagList[tagData[0]] = tagData[1]
-        } else {
-            tagList[tagData[0]] = ""
-        }
-    }
-
-    return tagList
-}
-
-func (hcIrc *HcIrc) ParseTwitchEmoteTag(emoteTag string) (emoteList map[int]TwitchMsgEmoteInfo, count int) {
-    var emote string
-    var emoteData []string
-    var emoteInfo TwitchMsgEmoteInfo
-    var emotes map[int]TwitchMsgEmoteInfo
-    var froms []int
-    var i int
-    var c int
-
-    // "working" map to mold the emotes data into a structure at all
-    emotes = make(map[int]TwitchMsgEmoteInfo)
-
-    // the final return map (will be filled from the working one above)
-    // that will have the emotes guaranteed sorted
-    emoteList = make(map[int]TwitchMsgEmoteInfo)
-
-    // first gather our emotes details into some somewhat structured data structures
-    for _, emote = range strings.Split(emoteTag, ",") {
-        emoteData = strings.Split(emote, ":")
-        emoteInfo.Id, _ = strconv.Atoi(emoteData[0])
-        emoteData = strings.Split(emoteData[1], "-")
-        emoteInfo.From, _ = strconv.Atoi(emoteData[0])
-        emoteInfo.To, _ = strconv.Atoi(emoteData[1])
-        emoteInfo.ChatUrl = fmt.Sprintf("https://static-cdn.jtvnw.net/emoticons/v1/%d/1.0", emoteInfo.Id)
-        froms = append(froms, emoteInfo.From)
-        emotes[emoteInfo.From] = emoteInfo
-    }
-
-    // order the positions of the emotes in the message string
-    sort.Ints(froms)
-
-    // now shove them into a SORTED (by ascending, successive indexes) map
-    count = len(emotes)
-    // we start the indexes for the return map with the highest one, and counting down.
-    // we do this 'cause the other code in 99% of all cases will process them back-to-front in the
-    // message string as otherwise it'd screw up the offsets supplied
-    c=count
-    for _, i = range froms {
-        c--
-        emoteList[c] = emotes[i]
-    }
-
-    return emoteList, count
 }
 
 

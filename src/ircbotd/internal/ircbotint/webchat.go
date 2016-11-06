@@ -173,6 +173,7 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     if ( hcIrc.IsTwitchModeEnabled() ) {
         tagList = hcIrc.ParseTwitchTags(tags)
         emotes, emoteCount = hcIrc.ParseTwitchEmoteTag(tagList["emotes"])
+        //badges, badgeCount = hcIrc.ParseTwitchBadgesTag(tagList["badges"])
 
         s = text
         for i = 0; i < emoteCount; i++ {
