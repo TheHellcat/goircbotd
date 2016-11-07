@@ -426,7 +426,7 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
 
     // send raw message to all registered receivers
     for _, msgChan = range srvMsgHooks {
-        if hcIrc.twitchMode {
+        if ((hcIrc.twitchMode) && (len(tags) == 0)) {
             // get separate user and tags for Twitch compatibility
             a = strings.Split(user, "\\")
             user = a[0]

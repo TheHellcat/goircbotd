@@ -190,10 +190,11 @@ func (hcIrc *HcIrc) ParseTwitchBadgesTag(badgesTag string) (badgesList map[int]T
  *
  */
 func (hcIrc *HcIrc) ParseTwitchEmoteTag(emoteTag string) (emoteList map[int]TwitchMsgEmoteInfo, count int) {
-    var emote string
+    var msgEmotes string
     var emoteData []string
     var emoteInfo TwitchMsgEmoteInfo
     var emotes map[int]TwitchMsgEmoteInfo
+    var emotePositions, emotePosition string
     var froms []int
     var i int
     var c int
@@ -206,15 +207,37 @@ func (hcIrc *HcIrc) ParseTwitchEmoteTag(emoteTag string) (emoteList map[int]Twit
     emoteList = make(map[int]TwitchMsgEmoteInfo)
 
     // first gather our emotes details into some somewhat structured data structures
-    for _, emote = range strings.Split(emoteTag, ",") {
-        emoteData = strings.Split(emote, ":")
-        emoteInfo.Id, _ = strconv.Atoi(emoteData[0])
-        emoteData = strings.Split(emoteData[1], "-")  // TODO: check if index "1" exists
-        emoteInfo.From, _ = strconv.Atoi(emoteData[0])
-        emoteInfo.To, _ = strconv.Atoi(emoteData[1])
-        emoteInfo.ChatUrl = fmt.Sprintf("https://static-cdn.jtvnw.net/emoticons/v1/%d/1.0", emoteInfo.Id)
-        froms = append(froms, emoteInfo.From)
-        emotes[emoteInfo.From] = emoteInfo
+
+    // got no emote data in the tag? nothing to do then, otherwise.... do!
+    if ( len(emoteTag) > 0 ) {
+
+        // split list of emotes in the message into an array and loop through it
+        for _, msgEmotes = range strings.Split(emoteTag, "/") {
+
+            // split ID and positions/offsets of the current emote
+            emoteData = strings.Split(msgEmotes, ":")
+
+            // ID: (saved in output struct)
+            emoteInfo.Id, _ = strconv.Atoi(emoteData[0])
+            // (list of) offsets where the emote occurs in the message
+            emotePositions = emoteData[1]
+
+            // now split the list of offsets into a per-occurrence array and loop through it
+            for _, emotePosition = range strings.Split(emotePositions, ",") {
+
+                // split the offset data into individual "from" and "to" values and save them in output struct
+                emoteData = strings.Split(emotePosition, "-")
+                emoteInfo.From, _ = strconv.Atoi(emoteData[0])
+                emoteInfo.To, _ = strconv.Atoi(emoteData[1])
+
+                // generate the image URL for displaying the emote
+                emoteInfo.ChatUrl = fmt.Sprintf("https://static-cdn.jtvnw.net/emoticons/v1/%d/1.0", emoteInfo.Id)
+
+                // save the offsets and emote data in seperate arrays, to be able to sort them later
+                froms = append(froms, emoteInfo.From)
+                emotes[emoteInfo.From] = emoteInfo
+            }
+        }
     }
 
     // order the positions of the emotes in the message string
