@@ -19,6 +19,7 @@ type TwitchBadgeType struct {
 }
 
 var twitchBadges map[string]map[string]TwitchBadgeType
+var twitchChannelBadges map[string]map[string]map[string]TwitchBadgeType
 
 
 /**
@@ -75,61 +76,60 @@ func (hcIrc *HcIrc) ParseTwitchTags(tags string) map[string]string {
 /**
  *
  */
-func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
+func (hcIrc *HcIrc) fetchTwitchBadges(url string) map[string]map[string]TwitchBadgeType {
     var jsonString string
     var jsonDecoder *json.Decoder
     var jMap interface{}
     var badgeData TwitchBadgeType
     var err error
     var badgeCount int
+    var twitchBadgesList map[string]map[string]TwitchBadgeType
 
-    if ( len(twitchBadges) == 0 ) {
-        hcIrc.debugPrint("[TWITCHSUPPORT] fetching user badge data from Twitch", "")
-        badgeCount = 0
+    hcIrc.debugPrint("[TWITCHSUPPORT] fetching user badge data from Twitch", "")
+    badgeCount = 0
 
-        twitchBadges = make(map[string]map[string]TwitchBadgeType)
+    twitchBadgesList = make(map[string]map[string]TwitchBadgeType)
 
-        jsonString, _ = callHttp("http://badges.twitch.tv/v1/badges/global/display")
-        jsonDecoder = json.NewDecoder(strings.NewReader(jsonString))
+    jsonString, _ = callHttp(url) //"http://badges.twitch.tv/v1/badges/global/display")
+    jsonDecoder = json.NewDecoder(strings.NewReader(jsonString))
 
-        err = jsonDecoder.Decode(&jMap)
-        if err == nil {
-            if ( reflect.TypeOf(jMap).String() == "map[string]interface {}") {
-                for kRoot, vRoot := range jMap.(map[string]interface{}) {
-                    if ( "badge_sets" == kRoot ) {
-                        if ( reflect.TypeOf(vRoot).String() == "map[string]interface {}") {
-                            for kSets, vSets := range vRoot.(map[string]interface{}) {
-                                if ( reflect.TypeOf(vSets).String() == "map[string]interface {}") {
-                                    for kSet, vSet := range vSets.(map[string]interface{}) {
-                                        if ( "versions" == kSet ) {
-                                            if ( reflect.TypeOf(vSet).String() == "map[string]interface {}") {
-                                                t := make(map[string]TwitchBadgeType)
-                                                for kVer, vVer := range vSet.(map[string]interface{}) {
-                                                    if ( reflect.TypeOf(vVer).String() == "map[string]interface {}") {
-                                                        badgeData.ImageUrl = ""
-                                                        badgeData.Description = ""
-                                                        badgeData.Title = ""
-                                                        for kDat, vDat := range vVer.(map[string]interface{}) {
-                                                            if ( reflect.TypeOf(vDat).String() == "string") {
-                                                                if ("image_url_1x" == kDat) {
-                                                                    badgeData.ImageUrl = vDat.(string)
-                                                                }
-                                                                if ("title" == kDat) {
-                                                                    badgeData.Title = vDat.(string)
-                                                                }
-                                                                if ("description" == kDat) {
-                                                                    badgeData.Description = vDat.(string)
-                                                                }
+    err = jsonDecoder.Decode(&jMap)
+    if err == nil {
+        if ( reflect.TypeOf(jMap).String() == "map[string]interface {}") {
+            for kRoot, vRoot := range jMap.(map[string]interface{}) {
+                if ( "badge_sets" == kRoot ) {
+                    if ( reflect.TypeOf(vRoot).String() == "map[string]interface {}") {
+                        for kSets, vSets := range vRoot.(map[string]interface{}) {
+                            if ( reflect.TypeOf(vSets).String() == "map[string]interface {}") {
+                                for kSet, vSet := range vSets.(map[string]interface{}) {
+                                    if ( "versions" == kSet ) {
+                                        if ( reflect.TypeOf(vSet).String() == "map[string]interface {}") {
+                                            t := make(map[string]TwitchBadgeType)
+                                            for kVer, vVer := range vSet.(map[string]interface{}) {
+                                                if ( reflect.TypeOf(vVer).String() == "map[string]interface {}") {
+                                                    badgeData.ImageUrl = ""
+                                                    badgeData.Description = ""
+                                                    badgeData.Title = ""
+                                                    for kDat, vDat := range vVer.(map[string]interface{}) {
+                                                        if ( reflect.TypeOf(vDat).String() == "string") {
+                                                            if ("image_url_1x" == kDat) {
+                                                                badgeData.ImageUrl = vDat.(string)
+                                                            }
+                                                            if ("title" == kDat) {
+                                                                badgeData.Title = vDat.(string)
+                                                            }
+                                                            if ("description" == kDat) {
+                                                                badgeData.Description = vDat.(string)
                                                             }
                                                         }
-                                                        badgeData.Version = kVer
-                                                        t[kVer] = badgeData
                                                     }
+                                                    badgeData.Version = kVer
+                                                    t[kVer] = badgeData
                                                 }
-                                                twitchBadges[kSets] = t
-                                                hcIrc.debugPrint("[TWITCHSUPPORT] got data for badge:", kSets)
-                                                badgeCount++
                                             }
+                                            twitchBadgesList[kSets] = t
+                                            hcIrc.debugPrint("[TWITCHSUPPORT] got data for badge:", kSets)
+                                            badgeCount++
                                         }
                                     }
                                 }
@@ -139,34 +139,59 @@ func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
                 }
             }
         }
-        hcIrc.debugPrint("[TWITCHSUPPORT] done fetch badges. badges got:", strconv.Itoa(badgeCount))
+    }
+    hcIrc.debugPrint("[TWITCHSUPPORT] done fetch badges. badges got:", strconv.Itoa(badgeCount))
+
+    return twitchBadgesList
+}
+
+/**
+ *
+ */
+func (hcIrc *HcIrc) fetchTwitchBadgesGlobal() {
+    if ( len(twitchBadges) == 0 ) {
+        hcIrc.debugPrint("[TWITCHSUPPORT] need global Twitch user badge data!", "")
+        twitchBadges = hcIrc.fetchTwitchBadges("http://badges.twitch.tv/v1/badges/global/display")
     }
 }
 
-// https://badges.twitch.tv/v1/badges/channels/<room-id>/display
 /**
  *
  */
 func (hcIrc *HcIrc) fetchTwitchBadgesChannel(channelId string) {
+    var url string
+
+    if ( len(twitchChannelBadges) == 0 ) {
+        hcIrc.debugPrint("[TWITCHSUPPORT] initialized channel user badge map", "")
+        twitchChannelBadges = make(map[string]map[string]map[string]TwitchBadgeType)
+    }
+
+    if ( len(twitchChannelBadges[channelId]) == 0 ) {
+        hcIrc.debugPrint("[TWITCHSUPPORT] need Twitch user badge data for channel", channelId)
+        url = fmt.Sprintf("https://badges.twitch.tv/v1/badges/channels/%s/display", channelId)
+        twitchChannelBadges[channelId] = hcIrc.fetchTwitchBadges(url)
+    }
+
 }
 
 
-// https://discuss.dev.twitch.tv/t/beta-badge-api/6388
 /**
  *
  */
-func (hcIrc *HcIrc) ParseTwitchBadgesTag(badgesTag string) (badgesList map[int]TwitchBadgeType, count int) {
+func (hcIrc *HcIrc) ParseTwitchBadgesTag(badgesTag, channelId string) (badgesList map[int]TwitchBadgeType, count int) {
     var c int
     var a []string
     var b []string
     var s string
     var v string
     var n string
+    var exists bool
 
     badgesList = make(map[int]TwitchBadgeType)
     c = 0
 
     hcIrc.fetchTwitchBadgesGlobal()
+    hcIrc.fetchTwitchBadgesChannel(channelId)
 
     a = strings.Split(badgesTag, ",")
     for _, s = range a {
@@ -177,7 +202,10 @@ func (hcIrc *HcIrc) ParseTwitchBadgesTag(badgesTag string) (badgesList map[int]T
         }
         n = b[0]
 
-        badgesList[c] = twitchBadges[n][v]
+        badgesList[c], exists = twitchChannelBadges[channelId][n][v]
+        if ( !exists ) {
+            badgesList[c] = twitchBadges[n][v]
+        }
         c++
     }
 
