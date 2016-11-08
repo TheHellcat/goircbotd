@@ -157,6 +157,8 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     var s string
     var badges map[int]hcirc.TwitchBadgeType
     var badgeCount int
+    var nickColor string
+    var styleOverride string
 
     clientMsg = make(map[string]string)
 
@@ -177,6 +179,8 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         emotes, emoteCount = hcIrc.ParseTwitchEmoteTag(tagList["emotes"])
         badges, badgeCount = hcIrc.ParseTwitchBadgesTag(tagList["badges"], tagList["room-id"])
         nick = tagList["display-name"]
+        nickColor = tagList["color"]
+        styleOverride = ""
 
         s = text
         for i = 0; i < emoteCount; i++ {
@@ -190,6 +194,11 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         }
         s = fmt.Sprintf("%s%s", s, nick)
         nick = s
+
+        if ( len(nickColor) > 0) {
+            styleOverride = fmt.Sprintf("%s color:%s", styleOverride, nickColor)
+        }
+        styleOverride = strings.Trim(styleOverride, " ")
     }
 
     // if no nickId was supplied, generate one
@@ -204,6 +213,7 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     clientMsg["nick"] = nick
     clientMsg["nickId"] = nickId
     clientMsg["text"] = text
+    clientMsg["styleOverride"] = styleOverride
     ba, err = json.Marshal(clientMsg)
     if err != nil {
         if wsHcIrc.Debugmode {
