@@ -84,11 +84,21 @@ func (hcIrc *HcIrc) fetchTwitchBadges(url string) map[string]map[string]TwitchBa
     var err error
     var badgeCount int
     var twitchBadgesList map[string]map[string]TwitchBadgeType
+    var t map[string]TwitchBadgeType
 
     hcIrc.debugPrint("[TWITCHSUPPORT] fetching user badge data from Twitch", "")
     badgeCount = 0
 
     twitchBadgesList = make(map[string]map[string]TwitchBadgeType)
+
+    // make sure there is at least one (dummy) entry in the map to mark it "initialised"
+    badgeData.ImageUrl = ""
+    badgeData.Description = ""
+    badgeData.Title = ""
+    badgeData.Version = ""
+    t = make(map[string]TwitchBadgeType)
+    t["0"] = badgeData
+    twitchBadgesList["_"] = t
 
     jsonString, _ = callHttp(url) //"http://badges.twitch.tv/v1/badges/global/display")
     jsonDecoder = json.NewDecoder(strings.NewReader(jsonString))
@@ -104,7 +114,7 @@ func (hcIrc *HcIrc) fetchTwitchBadges(url string) map[string]map[string]TwitchBa
                                 for kSet, vSet := range vSets.(map[string]interface{}) {
                                     if ( "versions" == kSet ) {
                                         if ( reflect.TypeOf(vSet).String() == "map[string]interface {}") {
-                                            t := make(map[string]TwitchBadgeType)
+                                            t = make(map[string]TwitchBadgeType)
                                             for kVer, vVer := range vSet.(map[string]interface{}) {
                                                 if ( reflect.TypeOf(vVer).String() == "map[string]interface {}") {
                                                     badgeData.ImageUrl = ""

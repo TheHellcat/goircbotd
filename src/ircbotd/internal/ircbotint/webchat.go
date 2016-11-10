@@ -9,6 +9,7 @@ import (
     "encoding/json"
     "strings"
     "hellcat/hcthreadutils"
+    "html"
 )
 
 type wchatBufMsg struct {
@@ -71,6 +72,8 @@ func webchatHistoryBuffer() {
                     wchatBuf[i].message = ""
                 }
             }
+        } else if "JOIN" == msg.Command {
+        } else if "PART" == msg.Command {
         }
     }
 
@@ -159,8 +162,10 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     var badgeCount int
     var nickColor string
     var styleOverride string
+    var orgNick string
 
     clientMsg = make(map[string]string)
+    orgNick = nick
 
     // check if this is a regular message or a /me action
     msgType = "chatmessage"
@@ -178,9 +183,11 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         tagList = hcIrc.ParseTwitchTags(tags)
         emotes, emoteCount = hcIrc.ParseTwitchEmoteTag(tagList["emotes"])
         badges, badgeCount = hcIrc.ParseTwitchBadgesTag(tagList["badges"], tagList["room-id"])
-        nick = tagList["display-name"]
         nickColor = tagList["color"]
         styleOverride = ""
+        if ( len(tagList["display-name"]) > 0) {
+            nick = tagList["display-name"]
+        }
 
         s = text
         for i = 0; i < emoteCount; i++ {
@@ -196,14 +203,20 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         nick = s
 
         if ( len(nickColor) > 0) {
-            styleOverride = fmt.Sprintf("%s color:%s", styleOverride, nickColor)
+            styleOverride = fmt.Sprintf("%s color:%s;", styleOverride, nickColor)
         }
         styleOverride = strings.Trim(styleOverride, " ")
     }
 
+    if ( "sys" == id[:3] ) {
+        msgType = "sysevent"
+        msgCss = "Event"
+        styleOverride = "";
+    }
+
     // if no nickId was supplied, generate one
     if len(nickId) < 1 {
-        nickId = wsHcIrc.NormalizeNick(nick)
+        nickId = wsHcIrc.NormalizeNick(orgNick)
     }
 
     // build final JSON to be sent to web client
@@ -332,18 +345,49 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
             channel = srvMsg.Channel
             nick = srvMsg.Nick
             text = srvMsg.Text
+            clmsgid += 1
+            if clmsgid > 268435455 {
+                // some cheap int32 kaboom protection by intentionally rolling over
+                // this way there is a clearly defined behaviour when we come close to the limit
+                // and no, I don't wanna use an int64 - it's also not really required here.
+                clmsgid = 1
+            }
             if "PRIVMSG" == command {
                 _, exists = joinedChannels[channel]
                 if exists {
-                    clmsgid += 1
-                    if clmsgid > 268435455 {
-                        // some cheap int32 kaboom protection by intentionally rolling over
-                        // this way there is a clearly defined behaviour when we come close to the limit
-                        // and no, I don't wanna use an int64 - it's also not really required here.
-                        clmsgid = 1
-                    }
-
                     s = fmt.Sprintf("msg%d", clmsgid)
+                    ba = generateWebchatJSON(text, s, nick, "", srvMsg.Tags)
+
+                    err = conn.WriteMessage(websocket.TextMessage, ba)
+                    if err != nil {
+                        if wsHcIrc.Debugmode {
+                            fmt.Printf("[WSCHATDEBUG] ERROR sending JSON to client: %s\n", err.Error())
+                        }
+                    }
+                }
+            } else if "JOIN" == command {
+                s = fmt.Sprintf("$.%s", channel)
+                _, exists = joinedChannels[s]
+                if exists {
+                    s = fmt.Sprintf("sys%d", clmsgid)
+                    text = "joined"
+
+                    ba = generateWebchatJSON(text, s, nick, "", srvMsg.Tags)
+
+                    err = conn.WriteMessage(websocket.TextMessage, ba)
+                    if err != nil {
+                        if wsHcIrc.Debugmode {
+                            fmt.Printf("[WSCHATDEBUG] ERROR sending JSON to client: %s\n", err.Error())
+                        }
+                    }
+                }
+            } else if "PART" == command {
+                s = fmt.Sprintf("$.%s", channel)
+                _, exists = joinedChannels[s]
+                if exists {
+                    s = fmt.Sprintf("sys%d", clmsgid)
+                    text = "left"
+
                     ba = generateWebchatJSON(text, s, nick, "", srvMsg.Tags)
 
                     err = conn.WriteMessage(websocket.TextMessage, ba)
@@ -358,6 +402,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                 if exists {
                     clientMsg["type"] = "clearchat"
                     clientMsg["nickId"] = wsHcIrc.NormalizeNick(text)
+                    fmt.Printf("\nCLEARCHAT for %s\n\n", clientMsg["nickId"])
                     ba, err = json.Marshal(clientMsg)
                     if err != nil {
                         if wsHcIrc.Debugmode {
