@@ -9,7 +9,6 @@ import (
     "encoding/json"
     "strings"
     "hellcat/hcthreadutils"
-    "html"
 )
 
 type wchatBufMsg struct {
