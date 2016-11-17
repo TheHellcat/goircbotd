@@ -9,6 +9,7 @@ import (
     "encoding/json"
     "strings"
     "hellcat/hcthreadutils"
+    "html"
 )
 
 type wchatBufMsg struct {
@@ -156,15 +157,17 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     var emotes map[int]hcirc.TwitchMsgEmoteInfo
     var emoteCount int
     var i int
-    var s string
+    var s,t string
     var badges map[int]hcirc.TwitchBadgeType
     var badgeCount int
     var nickColor string
     var styleOverride string
     var orgNick string
+    var emoteCache map[string]string
 
     clientMsg = make(map[string]string)
     orgNick = nick
+    emoteCache = make(map[string]string)
 
     // check if this is a regular message or a /me action
     msgType = "chatmessage"
@@ -188,9 +191,13 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
             nick = tagList["display-name"]
         }
 
+        // TODO: Add comment what and WHY we're doing here
         s = text
         for i = 0; i < emoteCount; i++ {
-            s = fmt.Sprintf("%s <img src=\"%s\" alt=\"\" class=\"chatEmote\" /> %s", s[:emotes[i].From], emotes[i].ChatUrl, s[emotes[i].To + 1:])
+            //s = fmt.Sprintf("%s <img src=\"%s\" alt=\"\" class=\"chatEmote\" /> %s", s[:emotes[i].From], emotes[i].ChatUrl, s[emotes[i].To + 1:])
+            t = fmt.Sprintf("{{%s}}", s[emotes[i].From:emotes[i].To+1])
+            emoteCache[t] = fmt.Sprintf("<img src=\"%s\" alt=\"\" class=\"chatEmote\" />", emotes[i].ChatUrl)
+            s = fmt.Sprintf("%s%s%s", s[:emotes[i].From], t, s[emotes[i].To + 1:])
         }
         text = s
 
@@ -205,6 +212,17 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
             styleOverride = fmt.Sprintf("%s color:%s;", styleOverride, nickColor)
         }
         styleOverride = strings.Trim(styleOverride, " ")
+    }
+
+    // no HTML allowed in webchat textmessages, replace "dangerous" characters with their respective entity
+    text = html.EscapeString(text)
+
+    // now that the message is safe (potential user HTML (breaking) escaped)
+    // finally put the image-tags for the inline Twitch emotes in
+    if ( hcIrc.IsTwitchModeEnabled() ) {
+        for s, t = range emoteCache {
+            text = strings.Replace(text, s, t, -1)
+        }
     }
 
     if ( "sys" == id[:3] ) {
