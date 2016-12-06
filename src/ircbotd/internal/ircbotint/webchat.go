@@ -191,18 +191,37 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
             nick = tagList["display-name"]
         }
 
-        // TODO: Add comment what and WHY we're doing here
-        // TODO: also add comment about the string->runeslice->string mashing (what, how, why)
+        // Emotes Part 1 of 2:
+        // we can't put in the actual emote images right here, as we do so by HMTL image tags
+        // but as we're HTML escaping the whole message later on (to prevent XSS and similar things
+        // in the webchat client) it would break the image tags.
+        // So we first put in some HTML safe placeholders that - after the HTML escaping - will
+        // then be string-replaced with the actual emote image tags (that we're also generating already and
+        // saving into a temp map here)
+
+        // cast the message string into a UTF8 safe rune slice, to have UTF8 chars not mess up everything
+        // (UTF8 chars need more than 1 byte so it'd mess up the offsets of the emotes)
         r := []rune(text)
+
+        // if there's no emotes in the message, "s" will never be filled with the placeholder'ed text,
+        // so set it to the original message text or else we'd loose the message after the loop
+        s = text
         for i = 0; i < emoteCount; i++ {
-            //s = fmt.Sprintf("%s <img src=\"%s\" alt=\"\" class=\"chatEmote\" /> %s", s[:emotes[i].From], emotes[i].ChatUrl, s[emotes[i].To + 1:])
             t = fmt.Sprintf("{{%s}}", string(r[emotes[i].From:emotes[i].To+1]))
             emoteCache[t] = fmt.Sprintf("<img src=\"%s\" alt=\"\" class=\"chatEmote\" />", emotes[i].ChatUrl)
             s = fmt.Sprintf("%s%s%s", string(r[:emotes[i].From]), t, string(r[emotes[i].To + 1:]))
+            // cast our working string back to UFT8 safe rune slice as our string operations above return a
+            // UTF8 not-safe string....
             r = []rune(s)
         }
+
+        // set current message text to the emote-placeholder'ed version
         text = s
 
+        // HTML escape the nickname....
+        nick = html.EscapeString(nick)
+
+        // ....and add the badges to it
         s = ""
         for i = 0; i < badgeCount; i++ {
             s = fmt.Sprintf("%s<img src=\"%s\" alt=\"%s\" class=\"chatUserBadge\" /> ", s, badges[i].ImageUrl, badges[i].Title)
@@ -210,6 +229,7 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         s = fmt.Sprintf("%s%s", s, nick)
         nick = s
 
+        // nick custom color
         if ( len(nickColor) > 0) {
             styleOverride = fmt.Sprintf("%s color:%s;", styleOverride, nickColor)
         }
@@ -219,6 +239,7 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     // no HTML allowed in webchat textmessages, replace "dangerous" characters with their respective entity
     text = html.EscapeString(text)
 
+    // Emotes Part 2 of 2:
     // now that the message is safe (potential user HTML (breaking) escaped)
     // finally put the image-tags for the inline Twitch emotes in
     if ( hcIrc.IsTwitchModeEnabled() ) {
