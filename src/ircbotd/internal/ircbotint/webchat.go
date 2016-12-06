@@ -192,12 +192,14 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         }
 
         // TODO: Add comment what and WHY we're doing here
-        s = text
+        // TODO: also add comment about the string->runeslice->string mashing (what, how, why)
+        r := []rune(text)
         for i = 0; i < emoteCount; i++ {
             //s = fmt.Sprintf("%s <img src=\"%s\" alt=\"\" class=\"chatEmote\" /> %s", s[:emotes[i].From], emotes[i].ChatUrl, s[emotes[i].To + 1:])
-            t = fmt.Sprintf("{{%s}}", s[emotes[i].From:emotes[i].To+1])
+            t = fmt.Sprintf("{{%s}}", string(r[emotes[i].From:emotes[i].To+1]))
             emoteCache[t] = fmt.Sprintf("<img src=\"%s\" alt=\"\" class=\"chatEmote\" />", emotes[i].ChatUrl)
-            s = fmt.Sprintf("%s%s%s", s[:emotes[i].From], t, s[emotes[i].To + 1:])
+            s = fmt.Sprintf("%s%s%s", string(r[:emotes[i].From]), t, string(r[emotes[i].To + 1:]))
+            r = []rune(s)
         }
         text = s
 
@@ -221,7 +223,9 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     // finally put the image-tags for the inline Twitch emotes in
     if ( hcIrc.IsTwitchModeEnabled() ) {
         for s, t = range emoteCache {
-            text = strings.Replace(text, s, t, -1)
+            // since all message text is HTML escaped at this point we need to escape our placeholder as well,
+            // so if it includes HTML chars (like the "<" in the "<3" emote) the replacement still matches
+            text = strings.Replace(text, html.EscapeString(s), t, -1)
         }
     }
 
