@@ -4,6 +4,7 @@ import (
     "strings"
     "fmt"
     "regexp"
+    "time"
 )
 
 
@@ -52,6 +53,7 @@ func (hcIrc *HcIrc) GetChannelUsers(channel string) map[string]Userinfo {
     var exists bool
     var nick, displayname string
     var user Userinfo
+    var channick string
 
     uInfoList = make(map[string]Userinfo)
 
@@ -60,9 +62,12 @@ func (hcIrc *HcIrc) GetChannelUsers(channel string) map[string]Userinfo {
     if exists {
         // put the users into a nice map with all the details we have
         for nick, displayname = range uList {
+            channick = fmt.Sprintf("%s:%s", channel, nick)
             user.NickDislpayname = hcIrc.stripUsermodeChars(displayname)
             user.NickModes = hcIrc.getUsermodeChars(displayname)
             user.NickNormalizedName = nick
+            user.JoinedSince = hcIrc.userJoinTimes[channick]
+            user.JoinDuration = (int)(time.Now().Unix() - hcIrc.userJoinTimes[channick])
             uInfoList[nick] = user
         }
     }
@@ -86,12 +91,14 @@ func (hcIrc *HcIrc) channelUserJoin(channel, nick string) {
     var s, t string
     var uList userlist
     var exists bool
+    var channick string
 
     uList, exists = hcIrc.channelUsers[channel]
     if !exists {
         uList = make(userlist)
     }
     s = hcIrc.NormalizeNick(nick)
+    channick = fmt.Sprintf("%s:%s", channel, s)
 
     // check if user is already in the list and add, if not
     _, exists = uList[s]
@@ -107,6 +114,7 @@ func (hcIrc *HcIrc) channelUserJoin(channel, nick string) {
     }
 
     hcIrc.channelUsers[channel] = uList
+    hcIrc.userJoinTimes[channick] = time.Now().Unix()
 
     // check if we ourselves just joined that room and remember we're in here if so
     if s == hcIrc.NormalizeNick(hcIrc.nick) {

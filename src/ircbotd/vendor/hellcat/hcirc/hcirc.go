@@ -6,6 +6,7 @@ import (
     "bufio"
     "strings"
     "hellcat/hcthreadutils"
+    "time"
 )
 
 type userlist map[string]string
@@ -14,18 +15,21 @@ type Userinfo struct {
     NickDislpayname    string
     NickModes          string
     NickNormalizedName string
+    JoinedSince        int64
+    JoinDuration       int
 }
 
 type ServerMessage struct {
-    Command  string
-    Channel  string
-    Nick     string
-    NickMode string
-    User     string
-    Host     string
-    Text     string
-    Raw      string
-    Tags     string
+    Command          string
+    Channel          string
+    Nick             string
+    NickMode         string
+    User             string
+    Host             string
+    Text             string
+    Raw              string
+    Tags             string
+    ExtendedUserInfo Userinfo
 }
 
 type HcIrc struct {
@@ -54,6 +58,7 @@ type HcIrc struct {
     outQueueRunning      bool
     outQuickQueueRunning bool
     channelUsers         map[string]userlist
+    userJoinTimes        map[string]int64
     threadIds            map[string]string
     dataDir              string
     twitchMode           bool
@@ -107,6 +112,7 @@ func New(serverHost, serverPort, serverUser, serverNick, serverPass string) (hcI
         inQueueRunning: false,
         outQueueRunning: false,
         channelUsers: make(map[string]userlist),
+        userJoinTimes: make(map[string]int64),
         threadIds: make(map[string]string),
         JoinedChannels: make(map[string]string),
         dataDir: "./",
@@ -366,6 +372,9 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
     var msgChan chan ServerMessage
     var srvMsg ServerMessage
     var tags string
+    var userInfo Userinfo
+    var channick string
+    var nicknorm string
 
     // keepalive pings from the server
     if command == "PING" {
@@ -424,27 +433,40 @@ func (hcIrc *HcIrc) HandleSystemMessages(command, channel, nick, user, host, tex
         hcIrc.changeUserMode(channel, nick, raw)
     }
 
+
     // send raw message to all registered receivers
-    for _, msgChan = range srvMsgHooks {
-        if ((hcIrc.twitchMode) && (len(tags) == 0)) {
-            // get separate user and tags for Twitch compatibility
-            a = strings.Split(user, "\\")
-            user = a[0]
-            if len(a) > 1 {
-                tags = a[1]
-            } else {
-                tags = ""
-            }
+
+    if ((hcIrc.twitchMode) && (len(tags) == 0)) {
+        // get separate user and tags for Twitch compatibility
+        a = strings.Split(user, "\\")
+        user = a[0]
+        if len(a) > 1 {
+            tags = a[1]
+        } else {
+            tags = ""
         }
-        srvMsg.Command = command
-        srvMsg.Channel = channel
-        srvMsg.Nick = nick
-        srvMsg.NickMode = hcIrc.GetChannelUserMode(channel, nick)
-        srvMsg.User = user
-        srvMsg.Host = host
-        srvMsg.Text = text
-        srvMsg.Raw = raw
-        srvMsg.Tags = tags
+    }
+
+    srvMsg.Command = command
+    srvMsg.Channel = channel
+    srvMsg.Nick = nick
+    srvMsg.NickMode = hcIrc.GetChannelUserMode(channel, nick)
+    srvMsg.User = user
+    srvMsg.Host = host
+    srvMsg.Text = text
+    srvMsg.Raw = raw
+    srvMsg.Tags = tags
+
+    nicknorm = hcIrc.NormalizeNick(nick)
+    channick = fmt.Sprintf("%s:%s", channel, nicknorm)
+    userInfo.NickDislpayname = nick
+    userInfo.NickModes = srvMsg.NickMode
+    userInfo.NickNormalizedName = nicknorm
+    userInfo.JoinedSince = hcIrc.userJoinTimes[channick]
+    userInfo.JoinDuration = (int)(time.Now().Unix() - hcIrc.userJoinTimes[channick])
+    srvMsg.ExtendedUserInfo = userInfo
+
+    for _, msgChan = range srvMsgHooks {
         msgChan <- srvMsg
     }
 }

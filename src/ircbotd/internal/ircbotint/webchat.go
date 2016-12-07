@@ -224,7 +224,9 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         // ....and add the badges to it
         s = ""
         for i = 0; i < badgeCount; i++ {
-            s = fmt.Sprintf("%s<img src=\"%s\" alt=\"%s\" class=\"chatUserBadge\" /> ", s, badges[i].ImageUrl, badges[i].Title)
+            if( len(badges[i].ImageUrl) > 0 ) {
+                s = fmt.Sprintf("%s<img src=\"%s\" alt=\"%s\" class=\"chatUserBadge\" /> ", s, badges[i].ImageUrl, badges[i].Title)
+            }
         }
         s = fmt.Sprintf("%s%s", s, nick)
         nick = s
@@ -428,7 +430,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                 _, exists = joinedChannels[s]
                 if exists {
                     s = fmt.Sprintf("sys%d", clmsgid)
-                    text = "left"
+                    text = fmt.Sprintf("left (after %d minutes)", (int)(srvMsg.ExtendedUserInfo.JoinDuration / 60))
 
                     ba = generateWebchatJSON(text, s, nick, "", srvMsg.Tags)
 
