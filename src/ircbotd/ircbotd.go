@@ -38,6 +38,7 @@ var cmdArgWebsocketBind string
 var cmdArgWebsocketEnabled bool
 var cmdArgDatadir string
 var cmdArgTwitchmode bool
+var cmdArgVersion bool
 var mainCtrl chan string
 var shutdown bool = false
 var running bool = true
@@ -60,6 +61,7 @@ func init() {
     flag.StringVar(&cmdArgWebsocketBind, "wsbind", "0.0.0.0:8088", "Listen binding for incomming http/websocket connections (defaults to 0.0.0.0:8088)")
     flag.StringVar(&cmdArgDatadir, "datadir", ".", "Directory to save datafiles. Defaults to current dir.")
     flag.BoolVar(&cmdArgTwitchmode, "twitch", false, "Enables 'Twitch-Mode', activates special compatibility with Twitch features")
+    flag.BoolVar(&cmdArgVersion, "version", false, "Only prints out splash / version information and quits")
 }
 
 
@@ -336,6 +338,10 @@ func main() {
     fmt.Printf("\n%s - %s\n  for %s\n%s\n\ncurrent GIT tag:\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
         ircbotint.IrcBotParentProject, ircbotint.IrcBotC, ircbotint.IrcBotGitVersion)
     // TODO: make this super fancy :-D
+
+    if cmdArgVersion {
+        return
+    }
 
     if cmdArgConsole && cmdArgDaemon {
         fmt.Printf("ERROR: can not run as daemon/backgrounded with interactive console!\n       -c and -D can not be used simultaniously!\n\n")
