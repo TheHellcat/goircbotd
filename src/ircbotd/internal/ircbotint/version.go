@@ -5,4 +5,6 @@ const (
     IrcBotName = "HC IRC Bot - supplementary daemon"
     IrcBotParentProject = "HC PHP IRC bot implementation"
     IrcBotC = "written by HELLCAT (hellcat@hellcat.net)"
+
+    IrcBotGitVersion = "{_GITVER_}"
 )

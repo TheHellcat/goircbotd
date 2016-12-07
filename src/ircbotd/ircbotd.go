@@ -333,8 +333,8 @@ func main() {
     os.MkdirAll(cmdArgDatadir, 0755)
 
     // some fancy "who am I splash" output :-)
-    fmt.Printf("\n%s - %s\n  for %s\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
-        ircbotint.IrcBotParentProject, ircbotint.IrcBotC)
+    fmt.Printf("\n%s - %s\n  for %s\n%s\n\ncurrent GIT tag:\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
+        ircbotint.IrcBotParentProject, ircbotint.IrcBotC, ircbotint.IrcBotGitVersion)
     // TODO: make this super fancy :-D
 
     if cmdArgConsole && cmdArgDaemon {
