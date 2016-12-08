@@ -330,16 +330,23 @@ func main() {
     var s string
     var b bool
     var a []string
+    var gitVer []string
 
     flag.Parse()
     os.MkdirAll(cmdArgDatadir, 0755)
 
+    gitVer = strings.Split(ircbotint.IrcBotGitVersion, ";")
+    if( len(gitVer) < 5 ) {
+        gitVer = strings.Split("unknown;unknown;unknown;unknown;unknown", ";")
+    }
+
     // some fancy "who am I splash" output :-)
-    fmt.Printf("\n%s - %s\n  for %s\n%s\n\ncurrent GIT tag:\n%s\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
-        ircbotint.IrcBotParentProject, ircbotint.IrcBotC, ircbotint.IrcBotGitVersion)
+    fmt.Printf("\n%s - %s\n  for %s\n%s\n\nbuild %s (%s)\n\n", ircbotint.IrcBotName, ircbotint.IrcBotVersion,
+        ircbotint.IrcBotParentProject, ircbotint.IrcBotC, gitVer[3], gitVer[0])
     // TODO: make this super fancy :-D
 
     if cmdArgVersion {
+        fmt.Printf("Version details:\n - build  : %s\n - branch : %s\n - date   : %s\n\n", gitVer[2], gitVer[4], gitVer[0])
         return
     }
 
