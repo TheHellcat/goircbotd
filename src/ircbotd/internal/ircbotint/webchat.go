@@ -157,7 +157,7 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
     var emotes map[int]hcirc.TwitchMsgEmoteInfo
     var emoteCount int
     var i int
-    var s,t string
+    var s, t string
     var badges map[int]hcirc.TwitchBadgeType
     var badgeCount int
     var nickColor string
@@ -207,7 +207,7 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         // so set it to the original message text or else we'd loose the message after the loop
         s = text
         for i = 0; i < emoteCount; i++ {
-            t = fmt.Sprintf("{{%s}}", string(r[emotes[i].From:emotes[i].To+1]))
+            t = fmt.Sprintf("{{%s}}", string(r[emotes[i].From:emotes[i].To + 1]))
             emoteCache[t] = fmt.Sprintf("<img src=\"%s\" alt=\"\" class=\"chatEmote\" />", emotes[i].ChatUrl)
             s = fmt.Sprintf("%s%s%s", string(r[:emotes[i].From]), t, string(r[emotes[i].To + 1:]))
             // cast our working string back to UFT8 safe rune slice as our string operations above return a
@@ -224,7 +224,7 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
         // ....and add the badges to it
         s = ""
         for i = 0; i < badgeCount; i++ {
-            if( len(badges[i].ImageUrl) > 0 ) {
+            if ( len(badges[i].ImageUrl) > 0 ) {
                 s = fmt.Sprintf("%s<img src=\"%s\" alt=\"%s\" class=\"chatUserBadge\" /> ", s, badges[i].ImageUrl, badges[i].Title)
             }
         }
@@ -283,6 +283,34 @@ func generateWebchatJSON(text, id, nick, nickId, tags string) []byte {
 
 
 /**
+ * Check if the given text matches any of the set filter words.
+ * Return also "true" if no filter words are set.
+ */
+func checkFilter(partialWordMap map[string]string, fullWordMap map[string]string, text string) bool {
+    var match bool
+    var s, t string
+
+    match = false
+
+    text = strings.ToLower(text)
+
+    if ( (len(partialWordMap) > 0) || (len(fullWordMap) > 0) ) {
+        for _, s = range partialWordMap {
+            match = match || strings.Contains(text, s)
+        }
+        for _, s = range fullWordMap {
+            t = " " + s + " "
+            match = match || strings.Contains(text, t)
+        }
+    } else {
+        match = true
+    }
+
+    return match
+}
+
+
+/**
  * main request handler
  *
  * handles the HTTP request, upgrade to WEBSOCKET and communication between bot and webclient
@@ -305,12 +333,16 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
     var a []string
     var msgChanId string
     var i int
+    var filterPartialWords map[string]string
+    var filterFullWords map[string]string
 
     running = true
     clmsgid = 0
     myId = request.RemoteAddr
     clientMsg = make(map[string]string)
     joinedChannels = make(map[string]string)
+    filterPartialWords = make(map[string]string)
+    filterFullWords = make(map[string]string)
 
     if wsHcIrc.Debugmode {
         fmt.Printf("[WSCHATDEBUG] New connection handler spawned: %s\n", myId)
@@ -354,34 +386,48 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
                     fmt.Printf("[WSCHATDEBUG] %s subscribed to channel %s\n", myId, a[1])
                 }
                 i = wchatBufCur + 2
-                if wsHcIrc.Debugmode {
-                    fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] Sending buffer to client for channel %s\n", a[1])
-                }
-                for i != wchatBufCur + 1 {
-                    if a[1] == wchatBuf[i].channel && len(wchatBuf[i].message) > 0 {
-                        s = fmt.Sprintf("hist%d", i)
 
-                        ba = generateWebchatJSON(wchatBuf[i].message, s, wchatBuf[i].nick, wchatBuf[i].nickId, wchatBuf[i].tags)
+                if ( (len(filterPartialWords) == 0) && (len(filterFullWords) == 0) ) {
+                    if wsHcIrc.Debugmode {
+                        fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] Sending buffer to client for channel %s\n", a[1])
+                    }
+                    for i != wchatBufCur + 1 {
+                        if a[1] == wchatBuf[i].channel && len(wchatBuf[i].message) > 0 {
+                            s = fmt.Sprintf("hist%d", i)
 
-                        _ = conn.WriteMessage(websocket.TextMessage, ba)
+                            ba = generateWebchatJSON(wchatBuf[i].message, s, wchatBuf[i].nick, wchatBuf[i].nickId, wchatBuf[i].tags)
+
+                            _ = conn.WriteMessage(websocket.TextMessage, ba)
+                        }
+                        i++
+                        if i == wchatBufSize {
+                            i = 0
+                        }
                     }
-                    i++
-                    if i == wchatBufSize {
-                        i = 0
+                    if wsHcIrc.Debugmode {
+                        fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] Done sending buffer to client\n")
                     }
+                } else {
+                    fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] Skipping history sending because filter are active\n")
                 }
-                if wsHcIrc.Debugmode {
-                    fmt.Printf("[WSCHATDEBUG][HISTORYREPLAY] Done sending buffer to client\n")
-                }
-            }
-            if "PART" == a[0] {
+
+            } else if "PART" == a[0] {
                 delete(joinedChannels, a[1])
                 if wsHcIrc.Debugmode {
                     fmt.Printf("[WSCHATDEBUG] %s unsubscribed to channel %s\n", myId, a[1])
                 }
-            }
-            if "QUIT" == a[0] {
+            } else if "QUIT" == a[0] {
                 running = false
+            } else if "FILTERPARTIAL" == a[0] {
+                filterPartialWords[a[1]] = strings.ToLower(a[1])
+                if wsHcIrc.Debugmode {
+                    fmt.Printf("[WSCHATDEBUG] %s added '%s' to partial words filter\n", myId, a[1])
+                }
+            } else if "FILTERFULL" == a[0] {
+                filterFullWords[a[1]] = strings.ToLower(a[1])
+                if wsHcIrc.Debugmode {
+                    fmt.Printf("[WSCHATDEBUG] %s added '%s' to full words filter\n", myId, a[1])
+                }
             }
 
         case srvMsg = <-msgChan:
@@ -398,7 +444,7 @@ func webchatHandler(writer http.ResponseWriter, request *http.Request) {
             }
             if "PRIVMSG" == command {
                 _, exists = joinedChannels[channel]
-                if exists {
+                if (exists && checkFilter(filterPartialWords, filterFullWords, text) ) {
                     s = fmt.Sprintf("msg%d", clmsgid)
                     ba = generateWebchatJSON(text, s, nick, "", srvMsg.Tags)
 
