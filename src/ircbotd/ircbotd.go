@@ -29,6 +29,16 @@ type strMainConfig struct {
     netChannels []string
 }
 
+type httpCmdCall struct {
+    Command string
+    Channel string
+    Nick    string
+    User    string
+    Host    string
+    Cmd     string
+    Param   string
+}
+
 var cmdArgDebug bool
 var cmdArgDaemon bool
 var cmdArgConsole bool
@@ -88,7 +98,7 @@ func fetchMainConfig() (bool, string) {
     } else {
         if len(cmdArgUrl) > 10 {
             ircbotint.SetHttpUrl(cmdArgUrl)
-            rJson, err = ircbotint.CallHttp( []string{"getmainconfig"} )
+            rJson, err = ircbotint.CallHttp([]string{"getmainconfig"})
             if err == nil {
                 ok = true
             } else {
@@ -164,7 +174,7 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson, err = ircbotint.CallHttp( []string{"getchatcommands"} )
+    sJson, err = ircbotint.CallHttp([]string{"getchatcommands"})
     if err != nil {
         fmt.Printf("(!) ERROR fetching chat commands: %s\n", err.Error())
         return
@@ -213,28 +223,46 @@ func fetchRegisteredCommands() {
  *
  */
 func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param string) {
+    var outData httpCmdCall
+    var ba []byte
+    var err error
+    var s string
 
+    outData.Command = command
+    outData.Channel = channel
+    outData.Nick = nick
+    outData.User = user
+    outData.Host = host
+    outData.Cmd = cmd
+    outData.Param = param
+
+    ba, err = json.Marshal(outData)
+    if err != nil {
+        // kaputt
+    }
+    s = string(ba)
+    fmt.Println(s)
     // test only
-    if "!test1" == cmd {
-        s := fmt.Sprintf("JOIN %s", param)
-        hcIrc.OutQuickQueue <- s
-    }
-    if "!test2" == cmd {
-        s := fmt.Sprintf("PRIVMSG %s :%s", channel, param)
-        hcIrc.OutboundQueue <- s
-    }
-    if "!test3" == cmd {
-        mainCtrl <- "SHUTDOWN"
-    }
-    if "!test4" == cmd {
-        mainCtrl <- "RESTART"
-    }
-    if "!test5" == cmd {
-        for joined := range hcIrc.JoinedChannels {
-            s := fmt.Sprintf("PRIVMSG %s :I am in %s", channel, joined)
-            hcIrc.OutboundQueue <- s
-        }
-    }
+    //if "!test1" == cmd {
+    //    s := fmt.Sprintf("JOIN %s", param)
+    //    hcIrc.OutQuickQueue <- s
+    //}
+    //if "!test2" == cmd {
+    //    s := fmt.Sprintf("PRIVMSG %s :%s", channel, param)
+    //    hcIrc.OutboundQueue <- s
+    //}
+    //if "!test3" == cmd {
+    //    mainCtrl <- "SHUTDOWN"
+    //}
+    //if "!test4" == cmd {
+    //    mainCtrl <- "RESTART"
+    //}
+    //if "!test5" == cmd {
+    //    for joined := range hcIrc.JoinedChannels {
+    //        s := fmt.Sprintf("PRIVMSG %s :I am in %s", channel, joined)
+    //        hcIrc.OutboundQueue <- s
+    //    }
+    //}
     // test only
 
 }
