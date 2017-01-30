@@ -16,6 +16,7 @@ import
     "hellcat/hcthreadutils"
     "ircbotd/internal/ircbotint"
     "ircbotd/internal/ircbotext"
+    "net/url"
 )
 
 type strMainConfig struct {
@@ -37,6 +38,11 @@ type httpCmdCall struct {
     Host    string
     Cmd     string
     Param   string
+}
+
+type httpCmdReturn struct {
+    Status  string
+    Content string
 }
 
 var cmdArgDebug bool
@@ -224,9 +230,12 @@ func fetchRegisteredCommands() {
  */
 func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param string) {
     var outData httpCmdCall
+    var inData httpCmdReturn
     var ba []byte
     var err error
-    var s string
+    var s, t, r string
+    var rLines []string
+    var i int
 
     outData.Command = command
     outData.Channel = channel
@@ -236,35 +245,54 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
     outData.Cmd = cmd
     outData.Param = param
 
+    if hcIrc.Debugmode {
+        fmt.Printf("[INTERFACEREGEDCMD] Performing backend HTTP call for registered chat command: %s\n", cmd)
+    }
+
     ba, err = json.Marshal(outData)
     if err != nil {
-        // kaputt
+        if hcIrc.Debugmode {
+            fmt.Printf("[INTERFACEREGEDCMD] Failed to generate call JSON: %s\n", err.Error())
+        }
     }
-    s = string(ba)
+    s = fmt.Sprintf("?data=%s", url.QueryEscape(string(ba)))
     fmt.Println(s)
-    // test only
-    //if "!test1" == cmd {
-    //    s := fmt.Sprintf("JOIN %s", param)
-    //    hcIrc.OutQuickQueue <- s
-    //}
-    //if "!test2" == cmd {
-    //    s := fmt.Sprintf("PRIVMSG %s :%s", channel, param)
-    //    hcIrc.OutboundQueue <- s
-    //}
-    //if "!test3" == cmd {
-    //    mainCtrl <- "SHUTDOWN"
-    //}
-    //if "!test4" == cmd {
-    //    mainCtrl <- "RESTART"
-    //}
-    //if "!test5" == cmd {
-    //    for joined := range hcIrc.JoinedChannels {
-    //        s := fmt.Sprintf("PRIVMSG %s :I am in %s", channel, joined)
-    //        hcIrc.OutboundQueue <- s
-    //    }
-    //}
-    // test only
+    r, err = ircbotint.CallHttp([]string{"callchatcommand", s})
+    if err != err {
+        if hcIrc.Debugmode {
+            fmt.Printf("[INTERFACEREGEDCMD] Error calling backend URL: %s\n", err.Error())
+        }
+    }
 
+    ba = []byte(r)
+    r = ""
+    err = json.Unmarshal(ba, &inData)
+    if nil == err {
+        if "OK" == inData.Status {
+            r = inData.Content
+        } else {
+            if hcIrc.Debugmode {
+                fmt.Printf("[INTERFACEREGEDCMD] Non-OK status in return data: %s\n", inData.Status)
+            }
+        }
+    } else {
+        if hcIrc.Debugmode {
+            fmt.Printf("[INTERFACEREGEDCMD] Error decoding return data: %s\n", err.Error())
+        }
+    }
+
+    r = strings.Replace(r, "\r", "", -1)
+    r = strings.Replace(r, "\n", "", -1)
+    rLines = strings.Split(r, "|")
+    i = 0
+    for _, s = range rLines {
+        t = fmt.Sprintf("%s\n", s)
+        hcIrc.OutboundQueue <- t
+        i++
+    }
+    if hcIrc.Debugmode {
+        fmt.Printf("[INTERFACEREGEDCMD] Sent %d resonse line(s) back to server\n", i)
+    }
 }
 
 
@@ -408,15 +436,20 @@ func main() {
         // flag to keep all worker threads running or tell them to exit
         running = true
 
-        // fetch main config from parent application
-        // TODO: fetch main config
-
         // init some stuff
         regedChatCommands = make(map[string]string)
         regedTimedCommands = make(map[string]int)
         // regedConsoleCommands = make(map[string]string)
 
         // fetch main configuration from parent application
+        hcIrc = hcirc.New("", "", "", "", "")
+        // Yeah, this is a bit messy and/or ugly, but we need to create a temp hcIrc instance for the database
+        // access to be able to work.
+        hcIrc.SetDataDir(cmdArgDatadir)
+        ircbotint.InitChatcmdHan(hcIrc)
+        // now that we have a skeleton, temporary hcIrc instance set up we can make the backend call
+        // to fetch the main config, which will also initialise HTTP authentication for all backend calls
+        // (as this is the very first request during runtime)
         b, s = fetchMainConfig()
         if !b {
             return
