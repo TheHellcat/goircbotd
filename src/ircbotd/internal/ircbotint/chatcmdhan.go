@@ -42,7 +42,9 @@ func executeCommand(command, channel, nick, user, host, cmd, param string, funct
     var s string
 
     s = function(command, channel, nick, user, host, cmd, param)
-    hcIrc.OutboundQueue <- s
+    if len(s) > 0 {
+        hcIrc.OutboundQueue <- s
+    }
 }
 
 

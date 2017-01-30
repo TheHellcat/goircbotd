@@ -16,6 +16,7 @@ import
     "hellcat/hcthreadutils"
     "ircbotd/internal/ircbotint"
     "ircbotd/internal/ircbotext"
+    "net/url"
 )
 
 type strMainConfig struct {
@@ -27,6 +28,21 @@ type strMainConfig struct {
     netPort     string
     netPassword string
     netChannels []string
+}
+
+type httpCmdCall struct {
+    Command string
+    Channel string
+    Nick    string
+    User    string
+    Host    string
+    Cmd     string
+    Param   string
+}
+
+type httpCmdReturn struct {
+    Status  string
+    Content string
 }
 
 var cmdArgDebug bool
@@ -91,7 +107,7 @@ func fetchMainConfig() (bool, string) {
     } else {
         if len(cmdArgUrl) > 10 {
             ircbotint.SetHttpUrl(cmdArgUrl)
-            rJson, err = ircbotint.CallHttp("getmainconfig", "")
+            rJson, err = ircbotint.CallHttp([]string{"getmainconfig"})
             if err == nil {
                 ok = true
             } else {
@@ -167,7 +183,7 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson, err = ircbotint.CallHttp("getchatcommands", "")
+    sJson, err = ircbotint.CallHttp([]string{"getchatcommands"})
     if err != nil {
         fmt.Printf("(!) ERROR fetching chat commands: %s\n", err.Error())
         return
@@ -216,30 +232,70 @@ func fetchRegisteredCommands() {
  *
  */
 func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param string) {
+    var outData httpCmdCall
+    var inData httpCmdReturn
+    var ba []byte
+    var err error
+    var s, t, r string
+    var rLines []string
+    var i int
 
-    // test only
-    if "!test1" == cmd {
-        s := fmt.Sprintf("JOIN %s", param)
-        hcIrc.OutQuickQueue <- s
+    outData.Command = command
+    outData.Channel = channel
+    outData.Nick = nick
+    outData.User = user
+    outData.Host = host
+    outData.Cmd = cmd
+    outData.Param = param
+
+    if hcIrc.Debugmode {
+        fmt.Printf("[INTERFACEREGEDCMD] Performing backend HTTP call for registered chat command: %s\n", cmd)
     }
-    if "!test2" == cmd {
-        s := fmt.Sprintf("PRIVMSG %s :%s", channel, param)
-        hcIrc.OutboundQueue <- s
-    }
-    if "!test3" == cmd {
-        mainCtrl <- "SHUTDOWN"
-    }
-    if "!test4" == cmd {
-        mainCtrl <- "RESTART"
-    }
-    if "!test5" == cmd {
-        for joined := range hcIrc.JoinedChannels {
-            s := fmt.Sprintf("PRIVMSG %s :I am in %s", channel, joined)
-            hcIrc.OutboundQueue <- s
+
+    ba, err = json.Marshal(outData)
+    if err != nil {
+        if hcIrc.Debugmode {
+            fmt.Printf("[INTERFACEREGEDCMD] Failed to generate call JSON: %s\n", err.Error())
         }
     }
-    // test only
+    s = fmt.Sprintf("?data=%s", url.QueryEscape(string(ba)))
+    fmt.Println(s)
+    r, err = ircbotint.CallHttp([]string{"callchatcommand", s})
+    if err != err {
+        if hcIrc.Debugmode {
+            fmt.Printf("[INTERFACEREGEDCMD] Error calling backend URL: %s\n", err.Error())
+        }
+    }
 
+    ba = []byte(r)
+    r = ""
+    err = json.Unmarshal(ba, &inData)
+    if nil == err {
+        if "OK" == inData.Status {
+            r = inData.Content
+        } else {
+            if hcIrc.Debugmode {
+                fmt.Printf("[INTERFACEREGEDCMD] Non-OK status in return data: %s\n", inData.Status)
+            }
+        }
+    } else {
+        if hcIrc.Debugmode {
+            fmt.Printf("[INTERFACEREGEDCMD] Error decoding return data: %s\n", err.Error())
+        }
+    }
+
+    r = strings.Replace(r, "\r", "", -1)
+    r = strings.Replace(r, "\n", "", -1)
+    rLines = strings.Split(r, "|")
+    i = 0
+    for _, s = range rLines {
+        t = fmt.Sprintf("%s\n", s)
+        hcIrc.OutboundQueue <- t
+        i++
+    }
+    if hcIrc.Debugmode {
+        fmt.Printf("[INTERFACEREGEDCMD] Sent %d resonse line(s) back to server\n", i)
+    }
 }
 
 
@@ -404,6 +460,14 @@ func main() {
         // regedConsoleCommands = make(map[string]string)
 
         // fetch main configuration from parent application
+        hcIrc = hcirc.New("", "", "", "", "")
+        // Yeah, this is a bit messy and/or ugly, but we need to create a temp hcIrc instance for the database
+        // access to be able to work.
+        hcIrc.SetDataDir(cmdArgDatadir)
+        ircbotint.InitChatcmdHan(hcIrc)
+        // now that we have a skeleton, temporary hcIrc instance set up we can make the backend call
+        // to fetch the main config, which will also initialise HTTP authentication for all backend calls
+        // (as this is the very first request during runtime)
         b, s = fetchMainConfig()
         if !b {
             return
