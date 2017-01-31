@@ -93,6 +93,8 @@ func ioInit() {
                     return
                 }
                 s = string(ba)
+                s = strings.Replace( s, "\n", "", -1 )
+                s = strings.Replace( s, "\r", "", -1 )
                 sa = strings.Split(s, ",")
                 if "LOGIN" == sa[0] {
                     loginOk = true
