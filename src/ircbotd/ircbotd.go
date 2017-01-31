@@ -286,9 +286,11 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
     rLines = strings.Split(r, "|")
     i = 0
     for _, s = range rLines {
-        t = fmt.Sprintf("%s\n", s)
-        hcIrc.OutboundQueue <- t
-        i++
+        if len(s) > 2 {
+            t = fmt.Sprintf("%s\n", s)
+            hcIrc.OutboundQueue <- t
+            i++
+        }
     }
     if hcIrc.Debugmode {
         fmt.Printf("[INTERFACEREGEDCMD] Sent %d resonse line(s) back to server\n", i)
