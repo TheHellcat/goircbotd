@@ -267,6 +267,9 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
         }
     }
 
+    if hcIrc.Debugmode {
+        fmt.Printf("[INTERFACEREGEDCMD] Return data received from backend call: %s\n", r)
+    }
     ba = []byte(r)
     r = ""
     err = json.Unmarshal(ba, &inData)
