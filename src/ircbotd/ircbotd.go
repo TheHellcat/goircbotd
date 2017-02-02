@@ -259,11 +259,11 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
         }
     }
     if hcIrc.Debugmode {
-        fmt.Printf("[INTERFACEREGEDCMD] JSON data to be sent to beckend: %s\n", string(ba))
+        fmt.Printf("[INTERFACEREGEDCMD] JSON data to be sent to backend: %s\n", string(ba))
     }
     s = fmt.Sprintf("?data=%s", url.QueryEscape(string(ba)))
     r, err = ircbotint.CallHttp([]string{"callchatcommand", s})
-    if err != err {
+    if nil != err {
         if hcIrc.Debugmode {
             fmt.Printf("[INTERFACEREGEDCMD] Error calling backend URL: %s\n", err.Error())
         }

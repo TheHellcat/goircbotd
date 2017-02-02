@@ -177,6 +177,9 @@ func CallHttp(params []string) (string, error) {
     httpReq.Header.Add("access-auth", commApiAuthInfo.Auth)
     r, err = httpClient.Do(httpReq)
     if err != nil {
+        if hcirc.Self.Debugmode {
+            fmt.Printf("[COMMIODEBUG] Error calling backend: %s\n", err.Error())
+        }
         return "", err
     }
 
@@ -184,6 +187,9 @@ func CallHttp(params []string) (string, error) {
     r.Body.Close()
 
     if err != nil {
+        if hcirc.Self.Debugmode {
+            fmt.Printf("[COMMIODEBUG] Error reading backend response: %s\n", err.Error())
+        }
         return "", err
     }
 
