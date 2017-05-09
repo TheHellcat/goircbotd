@@ -104,7 +104,7 @@ func fetchMainConfig() (bool, string) {
     } else {
         if len(cmdArgUrl) > 10 {
             ircbotint.SetHttpUrl(cmdArgUrl)
-            rJson, err = ircbotint.CallHttp([]string{"getmainconfig"})
+            rJson, err = ircbotint.CallHttp([]string{"v1", "getmainconfig"})
             if err == nil {
                 ok = true
             } else {
@@ -180,7 +180,7 @@ func fetchRegisteredCommands() {
     sChatCommands = ""
     sTimedCommands = ""
 
-    sJson, err = ircbotint.CallHttp([]string{"getchatcommands"})
+    sJson, err = ircbotint.CallHttp([]string{"v1", "getchatcommands"})
     if err != nil {
         fmt.Printf("(!) ERROR fetching chat commands: %s\n", err.Error())
         return
@@ -259,7 +259,7 @@ func interfaceRegisteredCommand(command, channel, nick, user, host, cmd, param s
         fmt.Printf("[INTERFACEREGEDCMD] JSON data to be sent to backend: %s\n", string(ba))
     }
     s = fmt.Sprintf("?data=%s", url.QueryEscape(string(ba)))
-    r, err = ircbotint.CallHttp([]string{"callchatcommand", s})
+    r, err = ircbotint.CallHttp([]string{"v1", "callchatcommand", s})
     if nil != err {
         if hcIrc.Debugmode {
             fmt.Printf("[INTERFACEREGEDCMD] Error calling backend URL: %s\n", err.Error())
