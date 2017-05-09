@@ -7,11 +7,13 @@ import (
     "io/ioutil"
     "hellcat/hcirc"
     "time"
+    "crypto/sha512"
+//    "encoding/hex"
+//    "crypto/rand"
 )
 
 const (
-    botApiRoot = "chatbotapi/"
-    botApiVersion = "v1/"
+    botApiRoot = "bapi/"
 )
 
 type commApiAuth struct {
@@ -83,8 +85,10 @@ func ioInit() {
     } else {
         loginOk = false
         for !loginOk {
-            commApiAuthInfo.Key = ioGenKey()
-            s = fmt.Sprintf("%s%s%slogin/%s", httpUrl, botApiRoot, botApiVersion, commApiAuthInfo.Key)
+            if len(commApiAuthInfo.Key)<2 {
+                commApiAuthInfo.Key = ioGenKey()
+            }
+            s = fmt.Sprintf("%s%sregister/%s", httpUrl, botApiRoot, commApiAuthInfo.Key)
             r, err = http.Get(s)
             if err == nil {
                 ba, err = ioutil.ReadAll(r.Body)
@@ -129,14 +133,39 @@ func ioInit() {
 /**
  *
  */
-func ioGenAuth() {
-    // TODO: change this to something sensible
-    commApiAuthInfo.Auth = commApiAuthInfo.Secret
+func ioGenAuth(url, body string) {
+    var timePeriod, periodLen int
+    var hashStr string
+    var hashStrBytes []byte
+    var hash string
+
+    periodLen = 90;
+    timePeriod = int(time.Now().Unix())
+    timePeriod = timePeriod / periodLen
+    hashStr = fmt.Sprintf("%s%s%d%s", url, body, timePeriod, commApiAuthInfo.Secret)
+    hashStrBytes = []byte(hashStr)
+
+    hash = fmt.Sprintf("%x", sha512.Sum512(hashStrBytes))
+
+    commApiAuthInfo.Auth = hash
 }
 
+
+/**
+ *
+ */
 func ioGenKey() string {
-    // TODO: change this to something sensible
-    return "00000000000000000000000000000000"
+    return "f72f366efcef11e6af69c38370dd29cbf7647194fcef11e6a947371c388b0752"
+    //u := make([]byte, 16)
+    //_, err := rand.Read(u)
+    //if err != nil {
+    //    return ""
+    //}
+    //
+    //u[8] = (u[8] | 0x80) & 0xBF
+    //u[6] = (u[6] | 0x40) & 0x4F
+    //
+    //return hex.EncodeToString(u)
 }
 
 
@@ -153,16 +182,18 @@ func CallHttp(params []string) (string, error) {
     var httpReq *http.Request
 
     ioInit()
-    ioGenAuth()
 
     for i = 0; i < len(params); i++ {
         if i > 0 {
             s = fmt.Sprintf("%s/%s", s, params[i])
         } else {
-            s = fmt.Sprintf("%s%s%s", botApiRoot, botApiVersion, params[i])
+            //s = fmt.Sprintf("%s%s%s", botApiRoot, botApiVersion, params[i])
+            s = fmt.Sprintf("%s%s", botApiRoot, params[i])
         }
     }
     s = fmt.Sprintf("%s%s", httpUrl, s)
+
+    ioGenAuth(s, "")
 
     if nil != hcirc.Self {
         if hcirc.Self.Debugmode {
